@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Calendar } from "lucide-react";
+import { ExternalLink, Calendar, Newspaper } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -45,16 +45,26 @@ export const ArticleCard = ({
         rel="noopener noreferrer"
         className="block"
       >
-        {imageUrl && (
-          <div className="relative aspect-video overflow-hidden bg-muted">
-            <img
-              src={imageUrl}
-              alt={title}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          </div>
-        )}
+        <div className="relative aspect-video overflow-hidden bg-muted">
+          {imageUrl ? (
+            <>
+              <img
+                src={imageUrl}
+                alt={title}
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            </>
+          ) : (
+            <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+              <Newspaper className="h-16 w-16 text-muted-foreground/40" />
+            </div>
+          )}
+        </div>
         <div className="p-5 space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge className={`${getSourceColor(source)} text-white border-0`}>

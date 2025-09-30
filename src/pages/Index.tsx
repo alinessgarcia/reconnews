@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ArticleCard } from "@/components/ArticleCard";
 import { NewsFilters } from "@/components/NewsFilters";
-import { ManualScrapeButton } from "@/components/ManualScrapeButton";
 import { Newspaper, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -106,19 +105,16 @@ const Index = () => {
                 </p>
               </div>
             </div>
-            <div className="flex gap-3">
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={fetchArticles}
-                disabled={loading}
-                className="gap-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                Atualizar
-              </Button>
-              <ManualScrapeButton />
-            </div>
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={fetchArticles}
+              disabled={loading}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              Atualizar
+            </Button>
           </div>
         </div>
       </header>
