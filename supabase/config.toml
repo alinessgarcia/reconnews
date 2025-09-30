@@ -1,0 +1,4 @@
+project_id = "ohntadcyqsdqghftivou"
+
+[functions.scrape-news]
+verify_jwt = false
