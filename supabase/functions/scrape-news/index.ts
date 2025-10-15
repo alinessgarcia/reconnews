@@ -15,6 +15,18 @@ interface Article {
   category?: string;
 }
 
+// Categorias especializadas em arqueologia bíblica
+const CATEGORIES = {
+  ARCHAEOLOGICAL_DISCOVERY: 'Descobertas Arqueológicas',
+  ANCIENT_MANUSCRIPTS: 'Manuscritos Antigos',
+  BIBLICAL_CITIES: 'Cidades Bíblicas',
+  BIBLICAL_CHARACTERS: 'Personagens Bíblicos',
+  SCIENTIFIC_FINDINGS: 'Achados Científicos',
+  RESEARCHERS: 'Pesquisadores e Estudos',
+  HISTORICAL_BOOKS: 'Livros Históricos',
+  CHRISTIAN_ARCHAEOLOGY: 'Arqueologia Cristã',
+};
+
 // Função auxiliar para extrair texto limpo de HTML
 function extractTextFromHtml(html: string): string {
   return html
