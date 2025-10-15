@@ -130,6 +130,15 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Limpar notícias antigas antes de coletar novas
+    console.log('🧹 Limpando notícias antigas...');
+    const { error: cleanupError } = await supabase.rpc('cleanup_old_articles');
+    if (cleanupError) {
+      console.error('⚠️ Erro ao limpar artigos antigos:', cleanupError);
+    } else {
+      console.log('✓ Limpeza concluída\n');
+    }
+
     console.log('🚀 Iniciando coleta de notícias sobre Arqueologia Bíblica...\n');
 
     let totalArticles = 0;
