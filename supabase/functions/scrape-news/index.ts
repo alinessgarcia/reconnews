@@ -15,444 +15,111 @@ interface Article {
   category?: string;
 }
 
-// Categorias especializadas em arqueologia bíblica
-const CATEGORIES = {
-  ARCHAEOLOGICAL_DISCOVERY: 'Descobertas Arqueológicas',
-  ANCIENT_MANUSCRIPTS: 'Manuscritos Antigos',
-  BIBLICAL_CITIES: 'Cidades Bíblicas',
-  BIBLICAL_CHARACTERS: 'Personagens Bíblicos',
-  SCIENTIFIC_FINDINGS: 'Achados Científicos',
-  RESEARCHERS: 'Pesquisadores e Estudos',
-  HISTORICAL_BOOKS: 'Livros Históricos',
-  CHRISTIAN_ARCHAEOLOGY: 'Arqueologia Cristã',
-};
+// Função auxiliar para extrair texto entre tags XML
+function extractXMLTag(xml: string, tag: string): string | null {
+  const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\/${tag}>`, 'i');
+  const match = xml.match(regex);
+  return match ? match[1].trim() : null;
+}
 
-// Função auxiliar para extrair texto limpo de HTML
-function extractTextFromHtml(html: string): string {
-  return html
+// Função auxiliar para extrair CDATA
+function cleanCDATA(text: string): string {
+  return text
+    .replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1')
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-// Função auxiliar para extrair imagem de um bloco HTML
-function extractImageUrl(html: string, baseUrl: string): string | undefined {
-  // Tenta várias formas de encontrar imagens
-  const patterns = [
-    /<img[^>]*src=["']([^"']+)["']/i,
-    /data-src=["']([^"']+)["']/i,
-    /data-lazy-src=["']([^"']+)["']/i,
-    /srcset=["']([^"'\s]+)/i,
-    /background-image:\s*url\(["']?([^"')]+)["']?\)/i,
-  ];
-  
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match && match[1]) {
-      let imgUrl = match[1];
-      
-      // Ignora imagens placeholders e logos
-      if (imgUrl.includes('placeholder') || imgUrl.includes('logo') || 
-          imgUrl.includes('icon') || imgUrl.includes('sprite') ||
-          imgUrl.includes('1x1') || imgUrl.endsWith('.svg')) {
-        continue;
-      }
-      
-      // Converte URLs relativas em absolutas
-      if (!imgUrl.startsWith('http')) {
-        try {
-          const base = new URL(baseUrl);
-          imgUrl = new URL(imgUrl, base.origin).href;
-        } catch (e) {
-          continue;
-        }
-      }
-      
-      return imgUrl;
-    }
-  }
-  
-  return undefined;
-}
-
-// Função para validar se é um artigo real (não elemento de navegação)
-function isValidArticle(title: string, url: string): boolean {
-  if (!title || title.length < 10) return false;
-  
-  const invalidTitles = [
-    'nossos parceiros', 'redes sociais', 'menu', 'navegação',
-    'compartilhe', 'siga-nos', 'assine', 'newsletter', 'mais lidas',
-    'últimas notícias', 'veja mais', 'leia também', 'publicidade',
-    'home', 'início', 'buscar', 'pesquisar'
-  ];
-  
-  const titleLower = title.toLowerCase();
-  if (invalidTitles.some(invalid => titleLower.includes(invalid))) {
-    return false;
-  }
-  
-  // Verifica se a URL parece ser de artigo
-  const urlLower = url.toLowerCase();
-  if (urlLower.includes('/tag/') || urlLower.includes('/category/') ||
-      urlLower.includes('/author/') || urlLower === '/' || 
-      urlLower.endsWith('/home') || urlLower.endsWith('/index')) {
-    return false;
-  }
-  
-  return true;
-}
-
-// Parser para Biblical Archaeology Society
-async function scrapeBAS(url: string): Promise<Article[]> {
+// Parser RSS genérico
+async function parseRSSFeed(url: string, source: string, category: string): Promise<Article[]> {
   try {
-    console.log(`  Buscando: ${url}`);
+    console.log(`  📡 Buscando RSS: ${source}`);
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept': 'application/rss+xml, application/xml, text/xml',
       },
     });
 
     if (!response.ok) {
-      console.log(`  ✗ BAS: Erro HTTP ${response.status}`);
+      console.log(`  ✗ ${source}: Erro HTTP ${response.status}`);
       return [];
     }
 
-    const html = await response.text();
+    const xml = await response.text();
     const articles: Article[] = [];
 
-    const patterns = [
-      /<article[^>]*>(.*?)<\/article>/gis,
-      /<div[^>]*class="[^"]*(?:post|article|entry)[^"]*"[^>]*>(.*?)<\/div>/gis,
-    ];
-    
-    for (const pattern of patterns) {
-      const matches = html.matchAll(pattern);
+    // Extrair todos os items do RSS
+    const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
+    const items = xml.match(itemRegex) || [];
+
+    for (const itemXml of items.slice(0, 20)) {
+      const title = extractXMLTag(itemXml, 'title');
+      const link = extractXMLTag(itemXml, 'link');
       
-      for (const match of Array.from(matches)) {
-        const blockHtml = match[1] || match[0];
-        
-        const linkMatch = blockHtml.match(/<a[^>]*href=["']([^"']+)["']/i);
-        if (!linkMatch) continue;
-        
-        let articleUrl = linkMatch[1];
-        if (!articleUrl.startsWith('http')) {
-          articleUrl = `https://www.biblicalarchaeology.org${articleUrl}`;
+      if (!title || !link || title.length < 10) continue;
+
+      const description = extractXMLTag(itemXml, 'description');
+      const pubDate = extractXMLTag(itemXml, 'pubDate');
+      
+      // Tentar extrair imagem da descrição
+      let imageUrl: string | undefined;
+      if (description) {
+        const imgMatch = description.match(/<img[^>]+src=["']([^"']+)["']/i);
+        if (imgMatch) {
+          imageUrl = imgMatch[1];
         }
-        
-        const titleMatch = blockHtml.match(/<h[1-6][^>]*>([^<]+)<\/h[1-6]>/i);
-        if (!titleMatch) continue;
-        
-        const title = extractTextFromHtml(titleMatch[1]);
-        if (!isValidArticle(title, articleUrl)) continue;
-        
-        const descMatch = blockHtml.match(/<p[^>]*>([^<]+)<\/p>/i);
-        const imageUrl = extractImageUrl(blockHtml, url);
-        
-        articles.push({
-          title,
-          description: descMatch ? extractTextFromHtml(descMatch[1]) : undefined,
-          url: articleUrl,
-          source: 'Biblical Archaeology Society',
-          image_url: imageUrl,
-          category: 'Arqueologia Bíblica',
-        });
-        
-        if (articles.length >= 10) break;
       }
-      
-      if (articles.length > 0) break;
+
+      const cleanDesc = description ? cleanCDATA(description).substring(0, 300) : undefined;
+
+      articles.push({
+        title: cleanCDATA(title),
+        description: cleanDesc,
+        url: cleanCDATA(link),
+        source,
+        published_at: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+        image_url: imageUrl,
+        category,
+      });
     }
 
-    console.log(`  ✓ BAS: ${articles.length} artigos encontrados`);
+    console.log(`  ✓ ${source}: ${articles.length} artigos encontrados`);
     return articles;
   } catch (error) {
-    console.error('  ✗ Erro no scraping BAS:', error);
+    console.error(`  ✗ Erro ao buscar ${source}:`, error);
     return [];
   }
 }
 
-// Parser para Bible History Daily
-async function scrapeBHD(url: string): Promise<Article[]> {
-  try {
-    console.log(`  Buscando: ${url}`);
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-    });
-
-    if (!response.ok) {
-      console.log(`  ✗ BHD: Erro HTTP ${response.status}`);
-      return [];
-    }
-
-    const html = await response.text();
-    const articles: Article[] = [];
-
-    const patterns = [
-      /<article[^>]*>(.*?)<\/article>/gis,
-      /<div[^>]*class="[^"]*(?:post|article)[^"]*"[^>]*>(.*?)<\/div>/gis,
-    ];
-    
-    for (const pattern of patterns) {
-      const matches = html.matchAll(pattern);
-      
-      for (const match of Array.from(matches)) {
-        const blockHtml = match[1] || match[0];
-        
-        const linkMatch = blockHtml.match(/<a[^>]*href=["']([^"']+)["']/i);
-        if (!linkMatch) continue;
-        
-        let articleUrl = linkMatch[1];
-        if (!articleUrl.startsWith('http')) {
-          articleUrl = `https://www.biblicalarchaeology.org${articleUrl}`;
-        }
-        
-        const titleMatch = blockHtml.match(/<h[1-6][^>]*>([^<]+)<\/h[1-6]>/i);
-        if (!titleMatch) continue;
-        
-        const title = extractTextFromHtml(titleMatch[1]);
-        if (!isValidArticle(title, articleUrl)) continue;
-        
-        const descMatch = blockHtml.match(/<p[^>]*>([^<]+)<\/p>/i);
-        const imageUrl = extractImageUrl(blockHtml, url);
-        
-        articles.push({
-          title,
-          description: descMatch ? extractTextFromHtml(descMatch[1]) : undefined,
-          url: articleUrl,
-          source: 'Bible History Daily',
-          image_url: imageUrl,
-          category: 'História Bíblica',
-        });
-        
-        if (articles.length >= 10) break;
-      }
-      
-      if (articles.length > 0) break;
-    }
-
-    console.log(`  ✓ BHD: ${articles.length} artigos encontrados`);
-    return articles;
-  } catch (error) {
-    console.error('  ✗ Erro no scraping BHD:', error);
-    return [];
-  }
+// Scraper para Google News via RSS
+async function scrapeGoogleNews(query: string, category: string): Promise<Article[]> {
+  const encodedQuery = encodeURIComponent(query);
+  const url = `https://news.google.com/rss/search?q=${encodedQuery}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+  return parseRSSFeed(url, 'Google News', category);
 }
 
-// Parser para Arqueologia Bíblica BR
-async function scrapeArqueologiaBiblica(url: string): Promise<Article[]> {
-  try {
-    console.log(`  Buscando: ${url}`);
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-    });
-
-    if (!response.ok) {
-      console.log(`  ✗ Arqueologia Bíblica: Erro HTTP ${response.status}`);
-      return [];
-    }
-
-    const html = await response.text();
-    const articles: Article[] = [];
-
-    const patterns = [
-      /<article[^>]*>(.*?)<\/article>/gis,
-      /<div[^>]*class="[^"]*(?:post|entry)[^"]*"[^>]*>(.*?)<\/div>/gis,
-    ];
-    
-    for (const pattern of patterns) {
-      const matches = html.matchAll(pattern);
-      
-      for (const match of Array.from(matches)) {
-        const blockHtml = match[1] || match[0];
-        
-        const linkMatch = blockHtml.match(/<a[^>]*href=["']([^"']+)["']/i);
-        if (!linkMatch) continue;
-        
-        let articleUrl = linkMatch[1];
-        if (!articleUrl.startsWith('http')) continue;
-        
-        const titleMatch = blockHtml.match(/<h[1-6][^>]*>([^<]+)<\/h[1-6]>/i);
-        if (!titleMatch) continue;
-        
-        const title = extractTextFromHtml(titleMatch[1]);
-        if (!isValidArticle(title, articleUrl)) continue;
-        
-        const descMatch = blockHtml.match(/<p[^>]*>([^<]+)<\/p>/i);
-        const imageUrl = extractImageUrl(blockHtml, url);
-        
-        articles.push({
-          title,
-          description: descMatch ? extractTextFromHtml(descMatch[1]) : undefined,
-          url: articleUrl,
-          source: 'Arqueologia Bíblica',
-          image_url: imageUrl,
-          category: 'Arqueologia Bíblica',
-        });
-        
-        if (articles.length >= 15) break;
-      }
-      
-      if (articles.length > 0) break;
-    }
-
-    console.log(`  ✓ Arqueologia Bíblica: ${articles.length} artigos encontrados`);
-    return articles;
-  } catch (error) {
-    console.error('  ✗ Erro no scraping Arqueologia Bíblica:', error);
-    return [];
-  }
-}
-
-// Parser para Science Daily - Biblical Archaeology
-async function scrapeScienceDaily(url: string): Promise<Article[]> {
-  try {
-    console.log(`  Buscando: ${url}`);
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-    });
-
-    if (!response.ok) {
-      console.log(`  ✗ Science Daily: Erro HTTP ${response.status}`);
-      return [];
-    }
-
-    const html = await response.text();
-    const articles: Article[] = [];
-
-    const patterns = [
-      /<div[^>]*id="featured"[^>]*>(.*?)<\/div>/gis,
-      /<div[^>]*class="[^"]*story[^"]*"[^>]*>(.*?)<\/div>/gis,
-    ];
-    
-    for (const pattern of patterns) {
-      const matches = html.matchAll(pattern);
-      
-      for (const match of Array.from(matches)) {
-        const blockHtml = match[1] || match[0];
-        
-        const linkMatch = blockHtml.match(/<a[^>]*href=["']([^"']+)["']/i);
-        if (!linkMatch) continue;
-        
-        let articleUrl = linkMatch[1];
-        if (!articleUrl.startsWith('http')) {
-          articleUrl = `https://www.sciencedaily.com${articleUrl}`;
-        }
-        
-        const titleMatch = blockHtml.match(/<h[1-6][^>]*>([^<]+)<\/h[1-6]>/i);
-        if (!titleMatch) continue;
-        
-        const title = extractTextFromHtml(titleMatch[1]);
-        if (!isValidArticle(title, articleUrl)) continue;
-        
-        const descMatch = blockHtml.match(/<p[^>]*>([^<]+)<\/p>/i);
-        const imageUrl = extractImageUrl(blockHtml, url);
-        
-        articles.push({
-          title,
-          description: descMatch ? extractTextFromHtml(descMatch[1]) : undefined,
-          url: articleUrl,
-          source: 'Science Daily',
-          image_url: imageUrl,
-          category: 'Ciência e Arqueologia',
-        });
-        
-        if (articles.length >= 10) break;
-      }
-      
-      if (articles.length > 0) break;
-    }
-
-    console.log(`  ✓ Science Daily: ${articles.length} artigos encontrados`);
-    return articles;
-  } catch (error) {
-    console.error('  ✗ Erro no scraping Science Daily:', error);
-    return [];
-  }
-}
-
-// Parser específico para National Geographic
-async function scrapeNatGeo(url: string): Promise<Article[]> {
-  try {
-    console.log(`  Buscando: ${url}`);
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-    });
-
-    if (!response.ok) {
-      console.log(`  ✗ NatGeo: Erro HTTP ${response.status}`);
-      return [];
-    }
-
-    const html = await response.text();
-    const articles: Article[] = [];
-
-    const patterns = [
-      /<article[^>]*>(.*?)<\/article>/gis,
-      /<div[^>]*class="[^"]*(?:card|post|article-item)[^"]*"[^>]*>(.*?)<\/div>/gis,
-    ];
-    
-    for (const pattern of patterns) {
-      const matches = html.matchAll(pattern);
-      
-      for (const match of Array.from(matches)) {
-        const blockHtml = match[1] || match[0];
-        
-        const linkMatch = blockHtml.match(/<a[^>]*href=["']([^"']+)["']/i);
-        if (!linkMatch) continue;
-        
-        let articleUrl = linkMatch[1];
-        if (!articleUrl.startsWith('http')) {
-          articleUrl = `https://www.nationalgeographicbrasil.com${articleUrl}`;
-        }
-        
-        const titleMatch = blockHtml.match(/<h[1-6][^>]*>([^<]+)<\/h[1-6]>/i);
-        if (!titleMatch) continue;
-        
-        const title = extractTextFromHtml(titleMatch[1]);
-        if (!isValidArticle(title, articleUrl)) continue;
-        
-        const descMatch = blockHtml.match(/<p[^>]*>([^<]+)<\/p>/i);
-        
-        const imageUrl = extractImageUrl(blockHtml, url);
-        
-        articles.push({
-          title,
-          description: descMatch ? extractTextFromHtml(descMatch[1]) : undefined,
-          url: articleUrl,
-          source: 'National Geographic',
-          image_url: imageUrl,
-          category: 'Arqueologia',
-        });
-        
-        if (articles.length >= 10) break;
-      }
-      
-      if (articles.length > 0) break;
-    }
-
-    console.log(`  ✓ NatGeo: ${articles.length} artigos encontrados`);
-    return articles;
-  } catch (error) {
-    console.error('  ✗ Erro no scraping NatGeo:', error);
-    return [];
-  }
-}
+// Fontes RSS especializadas em arqueologia
+const RSS_FEEDS = [
+  {
+    url: 'https://www.biblicalarchaeology.org/feed/',
+    source: 'Biblical Archaeology Society',
+    category: 'Arqueologia Bíblica',
+  },
+  {
+    url: 'https://www.archaeology.org/feed',
+    source: 'Archaeology Magazine',
+    category: 'Arqueologia',
+  },
+  {
+    url: 'https://archaeologynewsnetwork.blogspot.com/feeds/posts/default',
+    source: 'Archaeology News Network',
+    category: 'Notícias Arqueológicas',
+  },
+];
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -463,47 +130,52 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('🚀 Iniciando scraping de notícias sobre Arqueologia Bíblica...\n');
+    console.log('🚀 Iniciando coleta de notícias sobre Arqueologia Bíblica...\n');
 
     let totalArticles = 0;
     let newArticles = 0;
+    const allArticles: Article[] = [];
 
-    // Fazer scraping de cada fonte especializada em arqueologia bíblica
-    console.log('📖 Scraping Biblical Archaeology Society...');
-    const basArticles = await scrapeBAS('https://www.biblicalarchaeology.org/news/');
+    // Buscar Google News para termos específicos
+    console.log('🔍 Buscando no Google News...');
     
-    console.log('\n📚 Scraping Bible History Daily...');
-    const bhdArticles = await scrapeBHD('https://www.biblicalarchaeology.org/daily/');
-    
-    console.log('\n🏺 Scraping Arqueologia Bíblica BR...');
-    const arqueoArticles = await scrapeArqueologiaBiblica('https://arqueologiabiblica.blogspot.com/');
-    
-    console.log('\n🔬 Scraping Science Daily - Archaeology...');
-    const scienceArticles = await scrapeScienceDaily('https://www.sciencedaily.com/news/fossils_ruins/biblical_archaeology/');
-    
-    console.log('\n🏛️ Scraping National Geographic - Arqueologia...');
-    const natGeoArticles = await scrapeNatGeo('https://www.nationalgeographicbrasil.com/assunto/temas/historia/arqueologia');
-    
-    // Combinar todos os artigos
-    const allArticles = [
-      ...basArticles,
-      ...bhdArticles,
-      ...arqueoArticles,
-      ...scienceArticles,
-      ...natGeoArticles,
+    const queries = [
+      { term: 'arqueologia bíblica', category: 'Arqueologia Bíblica' },
+      { term: 'descoberta arqueológica israel', category: 'Descobertas Arqueológicas' },
+      { term: 'manuscritos antigos bíblia', category: 'Manuscritos Antigos' },
+      { term: 'cidades bíblicas descobertas', category: 'Cidades Bíblicas' },
+      { term: 'pesquisa arqueológica cristianismo', category: 'Pesquisas Científicas' },
     ];
+
+    for (const { term, category } of queries) {
+      const articles = await scrapeGoogleNews(term, category);
+      allArticles.push(...articles);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limiting
+    }
+
+    // Buscar RSS feeds especializados
+    console.log('\n📚 Buscando feeds RSS especializados...');
+    for (const feed of RSS_FEEDS) {
+      const articles = await parseRSSFeed(feed.url, feed.source, feed.category);
+      allArticles.push(...articles);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
     
-    console.log(`\n📊 Total de artigos encontrados: ${allArticles.length}`);
-    console.log(`   - Biblical Archaeology Society: ${basArticles.length}`);
-    console.log(`   - Bible History Daily: ${bhdArticles.length}`);
-    console.log(`   - Arqueologia Bíblica BR: ${arqueoArticles.length}`);
-    console.log(`   - Science Daily: ${scienceArticles.length}`);
-    console.log(`   - National Geographic: ${natGeoArticles.length}`);
     totalArticles = allArticles.length;
+    console.log(`\n📊 Total de artigos encontrados: ${totalArticles}`);
+
+    // Remover duplicatas baseado na URL
+    const uniqueArticles = allArticles.reduce((acc, article) => {
+      if (!acc.find(a => a.url === article.url)) {
+        acc.push(article);
+      }
+      return acc;
+    }, [] as Article[]);
+
+    console.log(`📊 Artigos únicos após deduplicação: ${uniqueArticles.length}`);
 
     // Inserir artigos no banco de dados
-    for (const article of allArticles) {
-
+    for (const article of uniqueArticles) {
       const { error } = await supabase
         .from('articles')
         .upsert(
@@ -512,7 +184,7 @@ Deno.serve(async (req) => {
             description: article.description,
             url: article.url,
             source: article.source,
-            published_at: article.published_at || new Date().toISOString(),
+            published_at: article.published_at,
             image_url: article.image_url,
             category: article.category,
             scraped_at: new Date().toISOString(),
@@ -522,19 +194,21 @@ Deno.serve(async (req) => {
 
       if (!error) {
         newArticles++;
-      } else if (error.code !== '23505') { // Ignore duplicate key errors
-        console.error(`✗ Erro ao inserir artigo (${article.source}):`, error.message);
+      } else if (error.code !== '23505') {
+        console.error(`✗ Erro ao inserir artigo:`, error.message);
       }
     }
 
-    console.log(`\n✅ Scraping concluído!`);
+    console.log(`\n✅ Coleta concluída!`);
     console.log(`   Total processado: ${totalArticles} artigos`);
-    console.log(`   Novos artigos: ${newArticles}`);
+    console.log(`   Artigos únicos: ${uniqueArticles.length}`);
+    console.log(`   Novos artigos inseridos: ${newArticles}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         totalArticles,
+        uniqueArticles: uniqueArticles.length,
         newArticles,
         timestamp: new Date().toISOString(),
       }),
@@ -544,7 +218,7 @@ Deno.serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Erro no scraping:', error);
+    console.error('❌ Erro na coleta:', error);
     return new Response(
       JSON.stringify({
         success: false,
