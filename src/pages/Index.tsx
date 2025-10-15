@@ -59,6 +59,39 @@ const Index = () => {
       setLoading(false);
     }
   };
+
+  const triggerScraping = async () => {
+    setLoading(true);
+    try {
+      toast({
+        title: "Coletando notícias...",
+        description: "Isso pode levar alguns minutos. Aguarde...",
+      });
+
+      const { error } = await supabase.functions.invoke('scrape-news');
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso!",
+        description: "Notícias coletadas com sucesso. Atualizando...",
+      });
+
+      // Aguardar um pouco e recarregar os artigos
+      setTimeout(() => {
+        fetchArticles();
+      }, 2000);
+    } catch (error) {
+      console.error("Erro ao coletar notícias:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível coletar as notícias.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Filtrar artigos com base em fonte, categoria e busca
   useEffect(() => {
@@ -174,16 +207,28 @@ const Index = () => {
                 </p>
               </div>
             </div>
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={fetchArticles}
-              disabled={loading}
-              className="gap-2 shadow-lg"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              Atualizar
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={fetchArticles}
+                disabled={loading}
+                className="gap-2 shadow-lg"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                Atualizar
+              </Button>
+              <Button
+                variant="default"
+                size="lg"
+                onClick={triggerScraping}
+                disabled={loading}
+                className="gap-2 shadow-lg"
+              >
+                <Newspaper className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                Coletar Agora
+              </Button>
+            </div>
           </div>
         </div>
       </header>
