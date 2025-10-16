@@ -6,6 +6,7 @@ import { CategoryFilter } from "@/components/CategoryFilter";
 import { StatsBar } from "@/components/StatsBar";
 import { SearchBar } from "@/components/SearchBar";
 import { Pagination } from "@/components/Pagination";
+import { CollectingBar } from "@/components/CollectingBar";
 import { Newspaper, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +33,8 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [isCollecting, setIsCollecting] = useState(false);
+  const [collectProgress, setCollectProgress] = useState(0);
   const { toast } = useToast();
   
   const ITEMS_PER_PAGE = 12;
@@ -60,37 +63,46 @@ const Index = () => {
     }
   };
 
-  const triggerScraping = async () => {
-    setLoading(true);
-    try {
-      toast({
-        title: "Coletando notícias...",
-        description: "Isso pode levar alguns minutos. Aguarde...",
+  const triggerCollectAnimation = async () => {
+    if (isCollecting) return;
+    
+    setIsCollecting(true);
+    setCollectProgress(0);
+    
+    toast({
+      title: "⚡ Energizando sistema...",
+      description: "Carregando poder de coleta das notícias!",
+    });
+
+    // Animação da barra de progresso
+    const interval = setInterval(() => {
+      setCollectProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        return prev + 2;
       });
+    }, 30);
 
-      const { error } = await supabase.functions.invoke('scrape-news');
-
-      if (error) throw error;
-
+    // Após 3 segundos, recarregar os artigos existentes
+    setTimeout(async () => {
+      clearInterval(interval);
+      setCollectProgress(100);
+      
+      await fetchArticles();
+      
       toast({
-        title: "Sucesso!",
-        description: "Notícias coletadas com sucesso. Atualizando...",
+        title: "✨ Poder coletado!",
+        description: "Notícias atualizadas com sucesso.",
       });
-
-      // Aguardar um pouco e recarregar os artigos
+      
+      // Reset após mostrar 100%
       setTimeout(() => {
-        fetchArticles();
-      }, 2000);
-    } catch (error) {
-      console.error("Erro ao coletar notícias:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível coletar as notícias.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+        setIsCollecting(false);
+        setCollectProgress(0);
+      }, 1000);
+    }, 3000);
   };
   
   // Filtrar artigos com base em fonte, categoria e busca
@@ -186,6 +198,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <CollectingBar progress={collectProgress} isCollecting={isCollecting} />
+      
       {/* Hero Section */}
       <header className="relative overflow-hidden bg-gradient-to-r from-primary via-primary/90 to-accent text-primary-foreground py-20 px-4">
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
@@ -221,12 +235,15 @@ const Index = () => {
               <Button
                 variant="default"
                 size="lg"
-                onClick={triggerScraping}
-                disabled={loading}
-                className="gap-2 shadow-lg"
+                onClick={triggerCollectAnimation}
+                disabled={loading || isCollecting}
+                className="gap-2 shadow-lg relative overflow-hidden group"
               >
-                <Newspaper className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                <Newspaper className={`h-4 w-4 ${isCollecting ? "animate-bounce" : ""}`} />
                 Coletar Agora
+                {isCollecting && (
+                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+                )}
               </Button>
             </div>
           </div>
