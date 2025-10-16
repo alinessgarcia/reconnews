@@ -22,11 +22,15 @@ function extractXMLTag(xml: string, tag: string): string | null {
   return match ? match[1].trim() : null;
 }
 
-// Função auxiliar para extrair CDATA
+// Função auxiliar para limpar texto de RSS
 function cleanCDATA(text: string): string {
   return text
-    .replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1')
+    .replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1')
+    .replace(/\]\]>/g, '')
     .replace(/<[^>]*>/g, ' ')
+    .replace(/&#\d+;/g, '')
+    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/\[&[^\]]*\]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }

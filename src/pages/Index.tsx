@@ -68,11 +68,6 @@ const Index = () => {
     
     setIsCollecting(true);
     setCollectProgress(0);
-    
-    toast({
-      title: "⚡ Energizando sistema...",
-      description: "Carregando poder de coleta das notícias!",
-    });
 
     // Animação da barra de progresso
     const interval = setInterval(() => {
@@ -91,11 +86,6 @@ const Index = () => {
       setCollectProgress(100);
       
       await fetchArticles();
-      
-      toast({
-        title: "✨ Poder coletado!",
-        description: "Notícias atualizadas com sucesso.",
-      });
       
       // Reset após mostrar 100%
       setTimeout(() => {
