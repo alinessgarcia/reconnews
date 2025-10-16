@@ -17,16 +17,19 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 215 25% 15%;
 
-    --primary: 214 85% 45%;
+    /* Brand primary: deep blue similar to the Ministry site's header */
+    --primary: 223 64% 33%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 30% 94%;
+    /* Brand secondary: sky blue for section backgrounds */
+    --secondary: 199 88% 61%;
     --secondary-foreground: 215 25% 25%;
 
     --muted: 210 30% 94%;
     --muted-foreground: 215 15% 50%;
 
-    --accent: 24 90% 55%;
+    /* Brand accent: green for CTAs */
+    --accent: 142 72% 49%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
@@ -34,15 +37,15 @@ All colors MUST be HSL.
 
     --border: 214 25% 88%;
     --input: 214 25% 88%;
-    --ring: 214 85% 45%;
+    --ring: 223 64% 33%;
 
     --radius: 0.75rem;
     
     /* News-specific design tokens */
-    --gradient-hero: linear-gradient(135deg, hsl(214 85% 45%), hsl(214 85% 60%));
-    --gradient-hero-accent: linear-gradient(135deg, hsl(24 90% 55%), hsl(24 90% 65%));
+    --gradient-hero: linear-gradient(135deg, hsl(223 64% 33%), hsl(223 64% 43%));
+    --gradient-hero-accent: linear-gradient(135deg, hsl(142 72% 49%), hsl(142 72% 59%));
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 20% 98%));
-    --gradient-featured: linear-gradient(135deg, hsl(214 85% 45% / 0.1), hsl(24 90% 55% / 0.1));
+    --gradient-featured: linear-gradient(135deg, hsl(223 64% 33% / 0.1), hsl(142 72% 49% / 0.1));
     --shadow-card: 0 2px 8px -2px hsl(215 25% 15% / 0.08);
     --shadow-card-hover: 0 8px 24px -4px hsl(215 25% 15% / 0.12);
     --shadow-elevated: 0 12px 32px -8px hsl(215 25% 15% / 0.15);
@@ -93,13 +96,13 @@ All colors MUST be HSL.
 
     --border: 215 20% 22%;
     --input: 215 20% 22%;
-    --ring: 214 85% 55%;
+    --ring: 223 64% 43%;
     
     /* Dark mode news tokens */
-    --gradient-hero: linear-gradient(135deg, hsl(214 85% 35%), hsl(214 85% 50%));
-    --gradient-hero-accent: linear-gradient(135deg, hsl(24 90% 50%), hsl(24 90% 60%));
+    --gradient-hero: linear-gradient(135deg, hsl(223 64% 25%), hsl(223 64% 40%));
+    --gradient-hero-accent: linear-gradient(135deg, hsl(142 72% 45%), hsl(142 72% 55%));
     --gradient-card: linear-gradient(180deg, hsl(215 25% 14%), hsl(215 28% 10%));
-    --gradient-featured: linear-gradient(135deg, hsl(214 85% 35% / 0.15), hsl(24 90% 50% / 0.15));
+    --gradient-featured: linear-gradient(135deg, hsl(223 64% 25% / 0.15), hsl(142 72% 45% / 0.15));
     --shadow-card: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
     --shadow-card-hover: 0 8px 24px -4px hsl(0 0% 0% / 0.4);
     --shadow-elevated: 0 12px 32px -8px hsl(0 0% 0% / 0.5);

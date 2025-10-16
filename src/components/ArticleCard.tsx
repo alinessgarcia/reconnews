@@ -3,10 +3,14 @@ import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Calendar, Newspaper } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { decodeHTML, sanitizeSummary } from "@/lib/utils";
 
 interface ArticleCardProps {
   title: string;
   description?: string;
+  titlePt?: string;
+  descriptionPt?: string;
+  translationProvider?: string;
   url: string;
   source: string;
   publishedAt?: string;
@@ -17,6 +21,9 @@ interface ArticleCardProps {
 export const ArticleCard = ({
   title,
   description,
+  titlePt,
+  descriptionPt,
+  translationProvider,
   url,
   source,
   publishedAt,
@@ -26,6 +33,11 @@ export const ArticleCard = ({
   const formattedDate = publishedAt
     ? format(new Date(publishedAt), "dd 'de' MMMM, yyyy", { locale: ptBR })
     : null;
+
+  const displayTitle = decodeHTML(titlePt || title);
+  const displayDescription = (descriptionPt || description)
+    ? sanitizeSummary(descriptionPt || description || "")
+    : undefined;
 
   const getCategoryColor = (category?: string) => {
     if (!category) return "bg-muted";
@@ -83,15 +95,20 @@ export const ArticleCard = ({
             <Badge variant="outline" className="text-xs font-medium border-primary/30 text-primary">
               {source}
             </Badge>
+            {(titlePt || descriptionPt) && (
+              <Badge className="bg-green-600 text-white text-[10px] border-0" title={translationProvider ? `Traduzido automaticamente via ${translationProvider}` : "Traduzido automaticamente"}>
+                Traduzido
+              </Badge>
+            )}
           </div>
           
           <h3 className="font-bold text-lg leading-tight text-foreground group-hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
-            {title}
+            {displayTitle}
           </h3>
           
-          {description && (
+          {displayDescription && (
             <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-              {description}
+              {displayDescription}
             </p>
           )}
           

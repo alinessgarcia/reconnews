@@ -27,9 +27,17 @@ function cleanCDATA(text: string): string {
   return text
     .replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1')
     .replace(/\]\]>/g, '')
+    // Remove tags HTML comuns e entidades restantes
     .replace(/<[^>]*>/g, ' ')
-    .replace(/&#\d+;/g, '')
-    .replace(/&[a-z]+;/gi, ' ')
+    // Decodifica entidades HTML como &#8230; e &amp;
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&(quot|amp|apos|lt|gt);/g, (m) => ({
+      '&quot;': '"',
+      '&amp;': '&',
+      '&apos;': "'",
+      '&lt;': '<',
+      '&gt;': '>'
+    }[m] || ' '))
     .replace(/\[&[^\]]*\]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -58,7 +66,7 @@ async function parseRSSFeed(url: string, source: string, category: string): Prom
     const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
     const items = xml.match(itemRegex) || [];
 
-    for (const itemXml of items.slice(0, 20)) {
+  for (const itemXml of items.slice(0, 20)) {
       const title = extractXMLTag(itemXml, 'title');
       const link = extractXMLTag(itemXml, 'link');
       
@@ -76,7 +84,16 @@ async function parseRSSFeed(url: string, source: string, category: string): Prom
         }
       }
 
-      const cleanDesc = description ? cleanCDATA(description).substring(0, 300) : undefined;
+      let cleanDesc = description ? cleanCDATA(description) : undefined;
+      // Remover trailing artefatos como "The post ... appeared first on ..." e reticências
+      if (cleanDesc) {
+        cleanDesc = cleanDesc
+          .replace(/The post[\s\S]*$/i, '')
+          .replace(/•?\s*Leia mais.*$/i, '')
+          .replace(/…$/g, '')
+          .trim()
+          .substring(0, 300);
+      }
 
       articles.push({
         title: cleanCDATA(title),

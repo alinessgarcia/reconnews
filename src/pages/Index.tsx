@@ -7,7 +7,7 @@ import { StatsBar } from "@/components/StatsBar";
 import { SearchBar } from "@/components/SearchBar";
 import { Pagination } from "@/components/Pagination";
 import { CollectingBar } from "@/components/CollectingBar";
-import { Newspaper, RefreshCw, Sparkles } from "lucide-react";
+import { Newspaper, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +17,9 @@ interface Article {
   id: string;
   title: string;
   description?: string;
+  title_pt?: string;
+  description_pt?: string;
+  translation_provider?: string;
   url: string;
   source: string;
   published_at?: string;
@@ -196,12 +199,10 @@ const Index = () => {
         <div className="container mx-auto max-w-7xl relative">
           <div className="flex items-center justify-between flex-wrap gap-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-white/10 backdrop-blur-sm">
-                <Sparkles className="h-10 w-10" />
-              </div>
+              <img src="/android-chrome-512x512.png" alt="ReconNews Logo" className="h-16 w-16 rounded-xl shadow-lg" />
               <div>
-                <h1 className="text-5xl font-bold mb-3 tracking-tight">
-                  Arqueologia Bíblica
+                <h1 className="text-5xl font-bold tracking-tight">
+                  ReconNews
                 </h1>
                 <p className="text-primary-foreground/90 text-lg font-medium">
                   Descobertas cristãs, achados arqueológicos sérios e pesquisas históricas
@@ -322,6 +323,9 @@ const Index = () => {
                   key={article.id}
                   title={article.title}
                   description={article.description || undefined}
+                  titlePt={article.title_pt || undefined}
+                  descriptionPt={article.description_pt || undefined}
+                  translationProvider={article.translation_provider || undefined}
                   url={article.url}
                   source={article.source}
                   publishedAt={article.published_at || undefined}
@@ -344,10 +348,10 @@ const Index = () => {
         <div className="container mx-auto max-w-7xl px-4">
           <div className="grid md:grid-cols-3 gap-8 mb-8">
             <div>
-              <h4 className="font-bold text-lg mb-3 flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                Arqueologia Bíblica
-              </h4>
+              <div className="flex items-center gap-3 mb-3">
+                <img src="/favicon-32x32.png" alt="ReconNews Logo" className="h-8 w-8 rounded-md" />
+                <h4 className="font-bold text-lg">ReconNews</h4>
+              </div>
               <p className="text-sm text-muted-foreground">
                 Portal especializado em descobertas arqueológicas cristãs, manuscritos antigos e pesquisas históricas sérias.
               </p>
@@ -374,7 +378,7 @@ const Index = () => {
           </div>
           <Separator className="mb-6" />
           <div className="text-center text-sm text-muted-foreground">
-            <p>© 2025 Portal de Arqueologia Bíblica • Todas as notícias são coletadas de fontes públicas</p>
+            <p>© 2025 ReconNews • Todas as notícias são coletadas de fontes públicas</p>
           </div>
         </div>
       </footer>
