@@ -121,22 +121,32 @@ async function scrapeGoogleNews(query: string, category: string): Promise<Articl
   return parseRSSFeed(url, 'Google News', category);
 }
 
-// Fontes RSS especializadas em arqueologia
+// Fontes RSS brasileiras especializadas em ciência, arqueologia e descobertas
 const RSS_FEEDS = [
   {
-    url: 'https://www.biblicalarchaeology.org/feed/',
-    source: 'Biblical Archaeology Society',
-    category: 'Arqueologia Bíblica',
+    url: 'https://revistagalileu.globo.com/feed/',
+    source: 'Revista Galileu',
+    category: 'Ciência e Descobertas',
   },
   {
-    url: 'https://www.archaeology.org/feed',
-    source: 'Archaeology Magazine',
-    category: 'Arqueologia',
+    url: 'https://super.abril.com.br/feed/',
+    source: 'Super Interessante',
+    category: 'Ciência',
   },
   {
-    url: 'https://archaeologynewsnetwork.blogspot.com/feeds/posts/default',
-    source: 'Archaeology News Network',
-    category: 'Notícias Arqueológicas',
+    url: 'https://www.nationalgeographicbrasil.com/feed',
+    source: 'National Geographic Brasil',
+    category: 'Descobertas Científicas',
+  },
+  {
+    url: 'https://canaltech.com.br/rss/',
+    source: 'Canaltech Ciência',
+    category: 'Tecnologia e Ciência',
+  },
+  {
+    url: 'https://oglobo.globo.com/rss.xml',
+    source: 'O Globo',
+    category: 'Notícias',
   },
 ];
 
@@ -170,11 +180,13 @@ Deno.serve(async (req) => {
     console.log('🔍 Buscando no Google News...');
     
     const queries = [
-      { term: 'arqueologia bíblica', category: 'Arqueologia Bíblica' },
-      { term: 'descoberta arqueológica israel', category: 'Descobertas Arqueológicas' },
-      { term: 'manuscritos antigos bíblia', category: 'Manuscritos Antigos' },
-      { term: 'cidades bíblicas descobertas', category: 'Cidades Bíblicas' },
-      { term: 'pesquisa arqueológica cristianismo', category: 'Pesquisas Científicas' },
+      { term: 'arqueologia bíblica Brasil', category: 'Arqueologia Bíblica' },
+      { term: 'descoberta arqueológica cristã', category: 'Descobertas Arqueológicas' },
+      { term: 'manuscritos antigos bíblia descoberta', category: 'Manuscritos Antigos' },
+      { term: 'arqueologia Israel descoberta', category: 'Arqueologia' },
+      { term: 'pesquisa histórica cristianismo', category: 'Pesquisas Históricas' },
+      { term: 'descoberta científica religião', category: 'Ciência e Religião' },
+      { term: 'achado arqueológico Terra Santa', category: 'Descobertas' },
     ];
 
     for (const { term, category } of queries) {
