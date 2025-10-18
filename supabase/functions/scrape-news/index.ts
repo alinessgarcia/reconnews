@@ -129,24 +129,24 @@ const RSS_FEEDS = [
     category: 'Notícias Gospel',
   },
   {
-    url: 'https://guiame.com.br/rss/noticias.xml',
-    source: 'Guia-me',
-    category: 'Notícias Cristãs',
-  },
-  {
-    url: 'https://www.cristianismohoje.com.br/feed',
-    source: 'Cristianismo Hoje',
-    category: 'Cristianismo',
-  },
-  {
-    url: 'https://bereianos.blogspot.com/feeds/posts/default',
-    source: 'Bereianos',
+    url: 'https://voltemosaoevangelho.com/blog/feed/',
+    source: 'Voltemos ao Evangelho',
     category: 'Teologia Reformada',
   },
   {
-    url: 'https://voltemosaoevangelho.com/blog/feed/',
-    source: 'Voltemos ao Evangelho',
-    category: 'Teologia',
+    url: 'https://pleno.news/feed',
+    source: 'Pleno News',
+    category: 'Notícias Evangélicas',
+  },
+  {
+    url: 'https://comunhao.com.br/feed',
+    source: 'Comunhão',
+    category: 'Portal Evangélico',
+  },
+  {
+    url: 'https://noticias.adventistas.org/pt/feed/',
+    source: 'Notícias Adventistas',
+    category: 'Notícias Cristãs',
   },
 ];
 
