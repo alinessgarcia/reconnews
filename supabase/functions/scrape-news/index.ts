@@ -121,8 +121,34 @@ async function scrapeGoogleNews(query: string, category: string): Promise<Articl
   return parseRSSFeed(url, 'Google News', category);
 }
 
-// Removido: vamos focar apenas nas buscas temáticas do Google News
-const RSS_FEEDS: { url: string; source: string; category: string }[] = [];
+// Fontes RSS de portais evangélicos e cristãos brasileiros
+const RSS_FEEDS = [
+  {
+    url: 'https://noticias.gospelmais.com.br/feed',
+    source: 'Gospel+',
+    category: 'Notícias Gospel',
+  },
+  {
+    url: 'https://guiame.com.br/rss/noticias.xml',
+    source: 'Guia-me',
+    category: 'Notícias Cristãs',
+  },
+  {
+    url: 'https://www.cristianismohoje.com.br/feed',
+    source: 'Cristianismo Hoje',
+    category: 'Cristianismo',
+  },
+  {
+    url: 'https://bereianos.blogspot.com/feeds/posts/default',
+    source: 'Bereianos',
+    category: 'Teologia Reformada',
+  },
+  {
+    url: 'https://voltemosaoevangelho.com/blog/feed/',
+    source: 'Voltemos ao Evangelho',
+    category: 'Teologia',
+  },
+];
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {

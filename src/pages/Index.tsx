@@ -72,30 +72,62 @@ const Index = () => {
     setIsCollecting(true);
     setCollectProgress(0);
 
-    // Animação da barra de progresso
-    const interval = setInterval(() => {
-      setCollectProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + 2;
-      });
-    }, 30);
+    try {
+      // Animação da barra de progresso
+      const interval = setInterval(() => {
+        setCollectProgress(prev => {
+          if (prev >= 95) {
+            return 95; // Para em 95% até a função terminar
+          }
+          return prev + 2;
+        });
+      }, 50);
 
-    // Após 3 segundos, recarregar os artigos existentes
-    setTimeout(async () => {
+      // Invocar a função de scraping
+      const { data, error } = await supabase.functions.invoke('scrape-news', {
+        body: { manual: true }
+      });
+
       clearInterval(interval);
+      
+      if (error) {
+        console.error('Erro ao coletar notícias:', error);
+        toast({
+          title: "Erro na coleta",
+          description: "Não foi possível coletar as notícias. Tente novamente.",
+          variant: "destructive",
+        });
+        setIsCollecting(false);
+        setCollectProgress(0);
+        return;
+      }
+
       setCollectProgress(100);
       
+      // Aguardar um pouco e recarregar os artigos
+      await new Promise(resolve => setTimeout(resolve, 500));
       await fetchArticles();
+      
+      toast({
+        title: "Coleta concluída!",
+        description: `${data?.newArticles || 0} novos artigos foram coletados.`,
+      });
       
       // Reset após mostrar 100%
       setTimeout(() => {
         setIsCollecting(false);
         setCollectProgress(0);
       }, 1000);
-    }, 3000);
+    } catch (err) {
+      console.error('Erro na coleta:', err);
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao coletar notícias.",
+        variant: "destructive",
+      });
+      setIsCollecting(false);
+      setCollectProgress(0);
+    }
   };
   
   // Filtrar artigos com base em fonte, categoria e busca
