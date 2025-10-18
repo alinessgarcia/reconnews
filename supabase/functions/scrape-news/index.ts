@@ -172,22 +172,37 @@ async function scrapeGoogleNews(query: string, category: string): Promise<Articl
   return parseRSSFeed(url, 'Google News', category);
 }
 
-// Fontes RSS especializadas em arqueologia
+// Fontes RSS de portais evangélicos e cristãos brasileiros
 const RSS_FEEDS = [
   {
-    url: 'https://www.biblicalarchaeology.org/feed/',
-    source: 'Biblical Archaeology Society',
-    category: 'Arqueologia Bíblica',
+    url: 'https://noticias.gospelmais.com.br/feed',
+    source: 'Gospel+',
+    category: 'Notícias Gospel',
   },
   {
-    url: 'https://www.archaeology.org/feed',
-    source: 'Archaeology Magazine',
-    category: 'Arqueologia',
+    url: 'https://voltemosaoevangelho.com/blog/feed/',
+    source: 'Voltemos ao Evangelho',
+    category: 'Teologia Reformada',
   },
   {
-    url: 'https://archaeologynewsnetwork.blogspot.com/feeds/posts/default',
-    source: 'Archaeology News Network',
-    category: 'Notícias Arqueológicas',
+    url: 'https://pleno.news/feed',
+    source: 'Pleno News',
+    category: 'Notícias Evangélicas',
+  },
+  {
+    url: 'https://comunhao.com.br/feed',
+    source: 'Comunhão',
+    category: 'Portal Evangélico',
+  },
+  {
+    url: 'https://revistagalileu.globo.com/rss/ultimas/feed.xml',
+    source: 'Galileu',
+    category: 'Ciência e Arqueologia',
+  },
+  {
+    url: 'https://masp.org.br/feed',
+    source: 'MASP',
+    category: 'Arte e Arqueologia',
   },
 ];
 
@@ -211,7 +226,7 @@ Deno.serve(async (req) => {
       console.log('✓ Limpeza concluída\n');
     }
 
-    console.log('🚀 Iniciando coleta de notícias sobre Arqueologia Bíblica...\n');
+    console.log('🚀 Iniciando coleta de notícias sobre Fé Cristã e Arqueologia Bíblica...\n');
 
     let totalArticles = 0;
     let newArticles = 0;
@@ -222,10 +237,17 @@ Deno.serve(async (req) => {
     
     const queries = [
       { term: 'arqueologia bíblica', category: 'Arqueologia Bíblica' },
-      { term: 'descoberta arqueológica israel', category: 'Descobertas Arqueológicas' },
-      { term: 'manuscritos antigos bíblia', category: 'Manuscritos Antigos' },
-      { term: 'cidades bíblicas descobertas', category: 'Cidades Bíblicas' },
-      { term: 'pesquisa arqueológica cristianismo', category: 'Pesquisas Científicas' },
+      { term: 'descoberta arqueológica Israel Terra Santa', category: 'Descobertas Arqueológicas' },
+      { term: 'manuscritos antigos bíblia', category: 'Manuscritos Bíblicos' },
+      { term: 'Mar Morto descoberta arqueológica', category: 'Manuscritos do Mar Morto' },
+      { term: 'teologia reformada', category: 'Teologia Reformada' },
+      { term: 'história cristianismo primitivo', category: 'História Cristã' },
+      { term: 'apologética cristã', category: 'Apologética' },
+      { term: 'evidências históricas bíblia', category: 'Evidências Bíblicas' },
+      { term: 'descoberta científica comprova bíblia', category: 'Ciência e Fé' },
+      { term: 'arqueologia Jerusalém templo', category: 'Arqueologia de Jerusalém' },
+      { term: 'perseguição cristãos', category: 'Perseguição Religiosa' },
+      { term: 'igreja evangélica Brasil notícias', category: 'Igreja Evangélica' },
     ];
 
     for (const { term, category } of queries) {
