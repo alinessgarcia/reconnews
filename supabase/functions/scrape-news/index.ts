@@ -144,9 +144,14 @@ const RSS_FEEDS = [
     category: 'Portal Evangélico',
   },
   {
-    url: 'https://noticias.adventistas.org/pt/feed/',
-    source: 'Notícias Adventistas',
-    category: 'Notícias Cristãs',
+    url: 'https://revistagalileu.globo.com/rss/ultimas/feed.xml',
+    source: 'Galileu',
+    category: 'Ciência e Arqueologia',
+  },
+  {
+    url: 'https://masp.org.br/feed',
+    source: 'MASP',
+    category: 'Arte e Arqueologia',
   },
 ];
 
