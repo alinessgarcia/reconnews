@@ -26,6 +26,10 @@ export type Database = {
           source: string
           title: string
           url: string
+          // Novas colunas de facetas acadêmicas
+          region: string | null
+          evidence_type: string | null
+          theme: string | null
         }
         Insert: {
           category?: string | null
@@ -38,6 +42,10 @@ export type Database = {
           source: string
           title: string
           url: string
+          // Novas colunas de facetas acadêmicas
+          region?: string | null
+          evidence_type?: string | null
+          theme?: string | null
         }
         Update: {
           category?: string | null
@@ -50,6 +58,10 @@ export type Database = {
           source?: string
           title?: string
           url?: string
+          // Novas colunas de facetas acadêmicas
+          region?: string | null
+          evidence_type?: string | null
+          theme?: string | null
         }
         Relationships: []
       }

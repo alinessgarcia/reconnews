@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { REGIONS_CIVILIZATIONS, EVIDENCE_TYPES, THEMES, facetCounts, classifyArticle } from "@/lib/utils";
 
 interface Article {
   id: string;
@@ -25,6 +26,10 @@ interface Article {
   published_at?: string;
   image_url?: string;
   category?: string;
+  // Novos campos persistidos
+  region?: string | null;
+  evidence_type?: string | null;
+  theme?: string | null;
   scraped_at: string;
 }
 
@@ -33,6 +38,10 @@ const Index = () => {
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  // Novos filtros acadêmicos
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [selectedEvidence, setSelectedEvidence] = useState<string | null>(null);
+  const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -45,11 +54,24 @@ const Index = () => {
   const fetchArticles = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("articles")
         .select("*")
         .order("scraped_at", { ascending: false })
         .limit(200);
+
+      // Filtros server-side para facetas acadêmicas
+      if (selectedRegion) {
+        query = query.eq("region", selectedRegion);
+      }
+      if (selectedEvidence) {
+        query = query.eq("evidence_type", selectedEvidence);
+      }
+      if (selectedTheme) {
+        query = query.eq("theme", selectedTheme);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -65,6 +87,13 @@ const Index = () => {
       setLoading(false);
     }
   };
+
+  // Recarrega artigos quando filtros acadêmicos mudarem para aplicar server-side
+  useEffect(() => {
+    fetchArticles();
+    // Resetar paginação ao alterar filtros
+    setCurrentPage(1);
+  }, [selectedRegion, selectedEvidence, selectedTheme]);
 
   const triggerCollectAnimation = async () => {
     if (isCollecting) return;
@@ -110,6 +139,20 @@ const Index = () => {
       filtered = filtered.filter((article) => article.category === selectedCategory);
     }
     
+    // Filtros acadêmicos (Região/Civilização, Tipo de Evidência, Tema)
+    if (selectedRegion || selectedEvidence || selectedTheme) {
+      filtered = filtered.filter((article) => {
+        const c = classifyArticle(article.title, article.description);
+        const region = article.region ?? c.region;
+        const evidence = article.evidence_type ?? c.evidenceType;
+        const theme = article.theme ?? c.theme;
+        const matchRegion = selectedRegion ? region === selectedRegion : true;
+        const matchEvidence = selectedEvidence ? evidence === selectedEvidence : true;
+        const matchTheme = selectedTheme ? theme === selectedTheme : true;
+        return matchRegion && matchEvidence && matchTheme;
+      });
+    }
+    
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((article) => 
@@ -120,7 +163,7 @@ const Index = () => {
     
     setFilteredArticles(filtered);
     setCurrentPage(1);
-  }, [selectedSource, selectedCategory, searchQuery, articles]);
+  }, [selectedSource, selectedCategory, selectedRegion, selectedEvidence, selectedTheme, searchQuery, articles]);
 
   useEffect(() => {
     fetchArticles();
@@ -188,6 +231,9 @@ const Index = () => {
     });
     return counts;
   }, [articles]);
+
+  // Contagens por facetas acadêmicas
+  const academicCounts = useMemo(() => facetCounts(articles), [articles]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -261,7 +307,7 @@ const Index = () => {
           />
         </div>
         
-        {/* Category Filter */}
+        {/* Category Filter (existente) */}
         <div className="mb-6">
           <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
             <span className="h-1 w-8 bg-primary rounded-full" />
@@ -273,6 +319,40 @@ const Index = () => {
             onCategoryChange={setSelectedCategory}
             counts={categoryCounts}
           />
+        </div>
+
+        {/* Filtros Acadêmicos */}
+        <div className="mb-8 p-5 bg-card rounded-xl border border-border shadow-sm">
+          <h3 className="text-sm font-semibold text-muted-foreground mb-3">TAXONOMIA ACADÊMICA</h3>
+          <div className="space-y-5">
+            <div>
+              <h4 className="text-xs font-medium text-muted-foreground mb-2">Regiões / Civilizações</h4>
+              <CategoryFilter
+                categories={REGIONS_CIVILIZATIONS}
+                selectedCategory={selectedRegion}
+                onCategoryChange={setSelectedRegion}
+                counts={academicCounts.regions}
+              />
+            </div>
+            <div>
+              <h4 className="text-xs font-medium text-muted-foreground mb-2">Tipo de Evidência</h4>
+              <CategoryFilter
+                categories={EVIDENCE_TYPES}
+                selectedCategory={selectedEvidence}
+                onCategoryChange={setSelectedEvidence}
+                counts={academicCounts.evidence}
+              />
+            </div>
+            <div>
+              <h4 className="text-xs font-medium text-muted-foreground mb-2">Temas</h4>
+              <CategoryFilter
+                categories={THEMES}
+                selectedCategory={selectedTheme}
+                onCategoryChange={setSelectedTheme}
+                counts={academicCounts.themes}
+              />
+            </div>
+          </div>
         </div>
         
         {/* Source Filters */}
@@ -306,7 +386,7 @@ const Index = () => {
               Nenhuma notícia encontrada
             </h3>
             <p className="text-muted-foreground max-w-md mx-auto">
-              {searchQuery || selectedCategory || selectedSource 
+              {searchQuery || selectedCategory || selectedSource || selectedRegion || selectedEvidence || selectedTheme
                 ? "Tente ajustar seus filtros ou busca"
                 : "O sistema coleta notícias automaticamente 2x ao dia"
               }

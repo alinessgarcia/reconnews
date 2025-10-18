@@ -15,6 +15,57 @@ interface Article {
   category?: string;
 }
 
+// ===== Classificação de facetas acadêmicas =====
+function normalizeForMatch(s: string): string {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const KEYWORDS = {
+  regions: {
+    'Israel': ['israel', 'jerusalem', 'jerusalém', 'galileia', 'judah', 'judá', 'samaria', 'samaria'],
+    'Terra Santa': ['terra santa', 'holy land'],
+    'Egito': ['egito', 'egypt', 'egipcio', 'egípcio', 'farao', 'faraó'],
+    'Grécia': ['grecia', 'grécia', 'greece', 'helenistico', 'helenístico'],
+    'Roma': ['roma', 'rome', 'romano', 'imperio romano', 'império romano'],
+    'Pérsia': ['persia', 'pérsia', 'aquemenida', 'aquemênida'],
+    'Babilônia': ['babilonia', 'babilônia', 'babylon', 'mesopotamia', 'mesopotâmia'],
+    'Assíria': ['assiria', 'assíria', 'assyrian', 'ninive', 'nínive', 'nineveh'],
+    'Síria': ['siria', 'síria', 'syria'],
+    'Crescente Fértil': ['crescente fertil', 'fertile crescent'],
+  },
+  evidence: {
+    'Sítio': ['sitio', 'sítio', 'escavacao', 'escavação', 'estratigrafia', 'camadas', 'tell', 'tel', 'qumran', 'jerico', 'jericó'],
+    'Museu': ['museu', 'exposicao', 'exposição', 'acervo', 'curadoria'],
+    'Achados': ['achado', 'achados', 'descoberta', 'descobertas', 'artefato', 'artefatos', 'inscricao', 'inscrição', 'inscricoes', 'inscrições', 'ossario', 'ossário', 'ossos', 'estela', 'bulla', 'selo'],
+    'Cópias': ['copia', 'cópia', 'copias', 'cópias', 'manuscrito', 'manuscritos', 'papiro', 'papiros', 'pergaminho', 'pergaminhos', 'codex', 'códice', 'codice', 'rolos do mar morto', 'dead sea scrolls', 'qumran']
+  },
+  themes: {
+    'Perspectiva Cristã': ['criacionismo', 'criacionista', 'criacao', 'criação', 'design inteligente', 'intelligent design']
+  }
+} as const;
+
+function classifyArticle(title?: string, description?: string) {
+  const text = normalizeForMatch(`${title || ''} ${description || ''}`);
+  const pickMatch = (group: Record<string, string[]>) => {
+    for (const key of Object.keys(group)) {
+      const kws = group[key];
+      if (kws.some(k => text.includes(k))) return key;
+    }
+    return null;
+  };
+
+  return {
+    region: pickMatch(KEYWORDS.regions),
+    evidenceType: pickMatch(KEYWORDS.evidence),
+    theme: pickMatch(KEYWORDS.themes),
+  } as { region: string | null; evidenceType: string | null; theme: string | null };
+}
+
 // Função auxiliar para extrair texto entre tags XML
 function extractXMLTag(xml: string, tag: string): string | null {
   const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\/${tag}>`, 'i');
@@ -207,6 +258,7 @@ Deno.serve(async (req) => {
     // Inserir artigos no banco de dados
     console.log('\n💾 Salvando artigos no banco de dados...');
     for (const article of uniqueArticles) {
+      const c = classifyArticle(article.title, article.description);
       const { error } = await supabase
         .from('articles')
         .upsert(
@@ -218,11 +270,14 @@ Deno.serve(async (req) => {
             published_at: article.published_at,
             image_url: article.image_url,
             category: article.category,
+            region: c.region,
+            evidence_type: c.evidenceType,
+            theme: c.theme,
             scraped_at: new Date().toISOString(),
           },
           { onConflict: 'url', ignoreDuplicates: true }
         );
-
+    
       if (!error) {
         newArticles++;
       } else if (error.code !== '23505') {
