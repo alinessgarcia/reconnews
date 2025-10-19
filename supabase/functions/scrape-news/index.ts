@@ -47,7 +47,7 @@ const KEYWORDS = {
   themes: {
     'Perspectiva Cristã': ['criacionismo', 'criacionista', 'criacao', 'criação', 'design inteligente', 'intelligent design']
   }
-} as const;
+};
 
 function classifyArticle(title?: string, description?: string) {
   const text = normalizeForMatch(`${title || ''} ${description || ''}`);

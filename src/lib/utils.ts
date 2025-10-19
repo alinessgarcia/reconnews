@@ -95,7 +95,7 @@ const KEYWORDS = {
   themes: {
     'Perspectiva Cristã': ['criacionismo', 'criacionista', 'criacao', 'criação', 'design inteligente', 'intelligent design']
   }
-} as const;
+};
 
 // Classifica um artigo a partir de título/descrição
 export function classifyArticle(title?: string, description?: string) {
