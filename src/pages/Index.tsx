@@ -7,12 +7,13 @@ import { StatsBar } from "@/components/StatsBar";
 import { SearchBar } from "@/components/SearchBar";
 import { Pagination } from "@/components/Pagination";
 import { CollectingBar } from "@/components/CollectingBar";
-import { Newspaper, RefreshCw } from "lucide-react";
+import { Newspaper, RefreshCw, Filter, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { REGIONS_CIVILIZATIONS, EVIDENCE_TYPES, THEMES, facetCounts, classifyArticle } from "@/lib/utils";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 
 interface Article {
   id: string;
@@ -47,6 +48,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [isCollecting, setIsCollecting] = useState(false);
   const [collectProgress, setCollectProgress] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const { toast } = useToast();
   
   const ITEMS_PER_PAGE = 12;
@@ -158,114 +160,66 @@ const Index = () => {
       setCollectProgress(0);
     }
   };
-  
-  // Filtrar artigos com base em fonte, categoria e busca
-  useEffect(() => {
-    let filtered = articles;
-    
-    if (selectedSource) {
-      filtered = filtered.filter((article) => article.source === selectedSource);
-    }
-    
-    if (selectedCategory) {
-      filtered = filtered.filter((article) => article.category === selectedCategory);
-    }
-    
-    // Filtros acadêmicos (Região/Civilização, Tipo de Evidência, Tema)
-    if (selectedRegion || selectedEvidence || selectedTheme) {
-      filtered = filtered.filter((article) => {
-        const c = classifyArticle(article.title, article.description);
-        const region = article.region ?? c.region;
-        const evidence = article.evidence_type ?? c.evidenceType;
-        const theme = article.theme ?? c.theme;
-        const matchRegion = selectedRegion ? region === selectedRegion : true;
-        const matchEvidence = selectedEvidence ? evidence === selectedEvidence : true;
-        const matchTheme = selectedTheme ? theme === selectedTheme : true;
-        return matchRegion && matchEvidence && matchTheme;
-      });
-    }
-    
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((article) => 
-        article.title.toLowerCase().includes(query) ||
-        article.description?.toLowerCase().includes(query)
-      );
-    }
-    
-    setFilteredArticles(filtered);
-    setCurrentPage(1);
-  }, [selectedSource, selectedCategory, selectedRegion, selectedEvidence, selectedTheme, searchQuery, articles]);
 
-  useEffect(() => {
-    fetchArticles();
+  // Contagens para filtros acadêmicos
+  const academicCounts = useMemo(() => facetCounts(articles), [articles]);
 
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel("articles-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "articles",
-        },
-        (payload) => {
-          console.log("Nova notícia adicionada:", payload);
-          setArticles((prev) => [payload.new as Article, ...prev]);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  // Calcular estatísticas
-  const stats = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const todayArticles = articles.filter(article => {
-      const articleDate = new Date(article.scraped_at);
-      articleDate.setHours(0, 0, 0, 0);
-      return articleDate.getTime() === today.getTime();
-    }).length;
-    
-    const sources = new Set(articles.map(a => a.source));
-    
-    return {
-      total: articles.length,
-      today: todayArticles,
-      sources: sources.size,
-    };
-  }, [articles]);
-  
-  // Paginação
-  const paginatedArticles = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    return filteredArticles.slice(startIndex, endIndex);
-  }, [filteredArticles, currentPage]);
-  
-  const totalPages = Math.ceil(filteredArticles.length / ITEMS_PER_PAGE);
-  
-  const sources = Array.from(new Set(articles.map((a) => a.source)));
-  const categories = Array.from(new Set(articles.map((a) => a.category).filter(Boolean))) as string[];
-  
+  // Listas derivadas para filtros simples
+  const sources = useMemo(() => Array.from(new Set(articles.map(a => a.source))), [articles]);
+  const categories = useMemo(() => Array.from(new Set(articles.map(a => a.category).filter(Boolean))) as string[], [articles]);
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: articles.length };
-    articles.forEach(article => {
-      if (article.category) {
-        counts[article.category] = (counts[article.category] || 0) + 1;
-      }
-    });
+    const counts: Record<string, number> = {};
+    for (const a of articles) {
+      const cat = a.category || undefined;
+      if (cat) counts[cat] = (counts[cat] || 0) + 1;
+    }
+    counts['all'] = articles.length;
     return counts;
   }, [articles]);
 
-  // Contagens por facetas acadêmicas
-  const academicCounts = useMemo(() => facetCounts(articles), [articles]);
+  // Filtragem client-side adicional (busca, fonte, categoria)
+  useEffect(() => {
+    let result = [...articles];
+
+    // Busca por texto
+    const q = (searchQuery || '').trim().toLowerCase();
+    if (q) {
+      result = result.filter(a => (
+        `${a.title} ${a.description || ''} ${a.title_pt || ''} ${a.description_pt || ''}`
+          .toLowerCase()
+          .includes(q)
+      ));
+    }
+
+    // Filtro por fonte e categoria
+    if (selectedSource) {
+      result = result.filter(a => a.source === selectedSource);
+    }
+    if (selectedCategory) {
+      result = result.filter(a => a.category === selectedCategory);
+    }
+
+    // Filtros acadêmicos (usar valor persistido ou classificar on-the-fly)
+    if (selectedRegion) {
+      result = result.filter(a => (a.region ?? classifyArticle(a.title, a.description).region) === selectedRegion);
+    }
+    if (selectedEvidence) {
+      result = result.filter(a => (a.evidence_type ?? classifyArticle(a.title, a.description).evidenceType) === selectedEvidence);
+    }
+    if (selectedTheme) {
+      result = result.filter(a => (a.theme ?? classifyArticle(a.title, a.description).theme) === selectedTheme);
+    }
+
+    setFilteredArticles(result);
+    setCurrentPage(1);
+  }, [articles, searchQuery, selectedSource, selectedCategory, selectedRegion, selectedEvidence, selectedTheme]);
+
+  // Paginação
+  const totalPages = Math.max(1, Math.ceil(filteredArticles.length / ITEMS_PER_PAGE));
+  const paginatedArticles = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredArticles.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredArticles, currentPage]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -286,7 +240,7 @@ const Index = () => {
                   Descobertas cristãs, achados arqueológicos sérios e pesquisas históricas
                 </p>
                 <p className="text-primary-foreground/75 text-sm mt-1">
-                  ⚡ Atualização automática às 10:00 e 22:00
+                  ⚡ Atualização automática 5x ao dia
                 </p>
               </div>
             </div>
@@ -316,143 +270,116 @@ const Index = () => {
               </Button>
             </div>
           </div>
+
+          {/* Stats Bar */}
+          <div className="mt-10">
+            <StatsBar
+              totalArticles={articles.length}
+              todayArticles={articles.filter(a => {
+                const published = a.published_at ? new Date(a.published_at) : null;
+                const today = new Date();
+                return published && published.toDateString() === today.toDateString();
+              }).length}
+              sources={[...new Set(articles.map(a => a.source))].length}
+            />
+          </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto max-w-7xl px-4 py-8">
-        {/* Stats Bar */}
-        <StatsBar 
-          totalArticles={stats.total}
-          todayArticles={stats.today}
-          sources={stats.sources}
-        />
-        
-        <Separator className="my-8" />
-        
-        {/* Search Bar */}
-        <div className="mb-6">
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Buscar por descobertas, cidades, pesquisadores..."
-          />
-        </div>
-        
-        {/* Category Filter (existente) */}
-        <div className="mb-6">
-          <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-            <span className="h-1 w-8 bg-primary rounded-full" />
-            CATEGORIAS ESPECIALIZADAS
-          </h3>
-          <CategoryFilter
-            categories={categories}
-            selectedCategory={selectedCategory}
-            onCategoryChange={setSelectedCategory}
-            counts={categoryCounts}
-          />
-        </div>
-
-        {/* Filtros Acadêmicos */}
-        <div className="mb-8 p-5 bg-card rounded-xl border border-border shadow-sm">
-          <h3 className="text-sm font-semibold text-muted-foreground mb-3">TAXONOMIA ACADÊMICA</h3>
-          <div className="space-y-5">
-            <div>
-              <h4 className="text-xs font-medium text-muted-foreground mb-2">Regiões / Civilizações</h4>
-              <CategoryFilter
-                categories={REGIONS_CIVILIZATIONS}
-                selectedCategory={selectedRegion}
-                onCategoryChange={setSelectedRegion}
-                counts={academicCounts.regions}
-              />
-            </div>
-            <div>
-              <h4 className="text-xs font-medium text-muted-foreground mb-2">Tipo de Evidência</h4>
-              <CategoryFilter
-                categories={EVIDENCE_TYPES}
-                selectedCategory={selectedEvidence}
-                onCategoryChange={setSelectedEvidence}
-                counts={academicCounts.evidence}
-              />
-            </div>
-            <div>
-              <h4 className="text-xs font-medium text-muted-foreground mb-2">Temas</h4>
-              <CategoryFilter
-                categories={THEMES}
-                selectedCategory={selectedTheme}
-                onCategoryChange={setSelectedTheme}
-                counts={academicCounts.themes}
-              />
-            </div>
-          </div>
-        </div>
-        
-        {/* Source Filters */}
-        <div className="mb-8 p-5 bg-card rounded-xl border border-border shadow-sm">
-          <h3 className="text-sm font-semibold text-muted-foreground mb-3">FONTES</h3>
-          <NewsFilters
-            selectedSource={selectedSource}
-            onSourceChange={setSelectedSource}
-            sources={sources}
-          />
-        </div>
-
-        {/* Articles Grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(12)].map((_, i) => (
-              <div key={i} className="space-y-3">
-                <Skeleton className="aspect-video w-full rounded-lg" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
+      {/* Filters and Search */}
+      <main className="container mx-auto max-w-7xl px-4">
+        <div className="mt-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Explorar Notícias</h2>
+            <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => setFiltersOpen(!filtersOpen)}>
+                  <Filter className="h-4 w-4" />
+                  Filtros
+                  {filtersOpen ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </Button>
               </div>
-            ))}
+              <CollapsibleContent className="mt-4 space-y-4">
+                <SearchBar value={searchQuery} onChange={setSearchQuery} />
+                <CategoryFilter categories={categories} selectedCategory={selectedCategory} onCategoryChange={setSelectedCategory} counts={categoryCounts} />
+                <NewsFilters
+                  selectedSource={selectedSource}
+                  onSourceChange={setSelectedSource}
+                  sources={sources}
+                />
+              </CollapsibleContent>
+            </Collapsible>
           </div>
-        ) : filteredArticles.length === 0 ? (
-          <div className="text-center py-20 px-4">
-            <div className="inline-flex p-4 rounded-full bg-muted mb-4">
-              <Newspaper className="h-12 w-12 text-muted-foreground" />
-            </div>
-            <h3 className="text-2xl font-bold mb-2">
-              Nenhuma notícia encontrada
-            </h3>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              {searchQuery || selectedCategory || selectedSource || selectedRegion || selectedEvidence || selectedTheme
-                ? "Tente ajustar seus filtros ou busca"
-                : "O sistema coleta notícias automaticamente 2x ao dia"
-              }
+
+          {/* Results header */}
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-sm text-muted-foreground">
+              {filteredArticles.length} resultados
             </p>
           </div>
-        ) : (
-          <>
-            <div className="mb-4 text-sm text-muted-foreground">
-              Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredArticles.length)} de {filteredArticles.length} notícias
-            </div>
+
+          <Separator className="my-4" />
+
+          {/* Articles Grid */}
+          {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {paginatedArticles.map((article) => (
-                <ArticleCard
-                  key={article.id}
-                  title={article.title}
-                  description={article.description || undefined}
-                  titlePt={article.title_pt || undefined}
-                  descriptionPt={article.description_pt || undefined}
-                  translationProvider={article.translation_provider || undefined}
-                  url={article.url}
-                  source={article.source}
-                  publishedAt={article.published_at || undefined}
-                  imageUrl={article.image_url || undefined}
-                  category={article.category || undefined}
-                />
+              {[...Array(12)].map((_, i) => (
+                <div key={i} className="space-y-3">
+                  <Skeleton className="aspect-video w-full rounded-lg" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
               ))}
             </div>
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          </>
-        )}
+          ) : filteredArticles.length === 0 ? (
+            <div className="text-center py-20 px-4">
+              <div className="inline-flex p-4 rounded-full bg-muted mb-4">
+                <Newspaper className="h-12 w-12 text-muted-foreground" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">
+                Nenhuma notícia encontrada
+              </h3>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                {searchQuery || selectedCategory || selectedSource || selectedRegion || selectedEvidence || selectedTheme
+                  ? "Tente ajustar seus filtros ou busca"
+                  : "O sistema coleta notícias automaticamente 5x ao dia"
+                }
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {paginatedArticles.map((article) => (
+                  <ArticleCard
+                    key={article.id}
+                    title={article.title}
+                    description={article.description || undefined}
+                    titlePt={article.title_pt || undefined}
+                    descriptionPt={article.description_pt || undefined}
+                    translationProvider={article.translation_provider || undefined}
+                    url={article.url}
+                    source={article.source}
+                    publishedAt={article.published_at || undefined}
+                    imageUrl={article.image_url || undefined}
+                    category={article.category || undefined}
+                  />
+                ))}
+              </div>
+              <div className="mt-6">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            </>
+          )}
+        </div>
       </main>
 
       {/* Footer */}
@@ -483,7 +410,10 @@ const Index = () => {
                 Sistema automático de coleta
               </p>
               <div className="flex flex-col gap-1 text-sm">
+                <span className="text-primary font-medium">⏰ 06:00 (Manhã)</span>
                 <span className="text-primary font-medium">⏰ 10:00 (Manhã)</span>
+                <span className="text-primary font-medium">⏰ 14:00 (Tarde)</span>
+                <span className="text-primary font-medium">⏰ 18:00 (Tarde)</span>
                 <span className="text-primary font-medium">⏰ 22:00 (Noite)</span>
               </div>
             </div>

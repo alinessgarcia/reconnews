@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface CategoryFilterProps {
   categories: string[];
@@ -16,17 +15,18 @@ export const CategoryFilter = ({
   counts = {}
 }: CategoryFilterProps) => {
   return (
-    <ScrollArea className="w-full whitespace-nowrap">
-      <div className="flex gap-2 pb-2">
+    <div className="w-full">
+      {/* Mobile: quebra automática em múltiplas linhas */}
+      <div className="flex flex-wrap gap-2 pb-2">
         <Button
           variant={selectedCategory === null ? "default" : "outline"}
           size="sm"
           onClick={() => onCategoryChange(null)}
-          className="flex-shrink-0"
+          className="text-xs px-2"
         >
           Todas
           {counts['all'] && (
-            <Badge variant="secondary" className="ml-2 bg-background">
+            <Badge variant="secondary" className="ml-1 bg-background text-[10px] px-1 py-0.5">
               {counts['all']}
             </Badge>
           )}
@@ -37,18 +37,18 @@ export const CategoryFilter = ({
             variant={selectedCategory === category ? "default" : "outline"}
             size="sm"
             onClick={() => onCategoryChange(category)}
-            className="flex-shrink-0"
+            className="text-xs px-2"
+            title={category}
           >
             {category}
             {counts[category] && (
-              <Badge variant="secondary" className="ml-2 bg-background">
+              <Badge variant="secondary" className="ml-1 bg-background text-[10px] px-1 py-0.5">
                 {counts[category]}
               </Badge>
             )}
           </Button>
         ))}
       </div>
-      <ScrollBar orientation="horizontal" />
-    </ScrollArea>
+    </div>
   );
 };

@@ -14,30 +14,33 @@ export const NewsFilters = ({
   sources,
 }: NewsFiltersProps) => {
   return (
-    <div className="flex items-center gap-3 flex-wrap">
-      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+    <div className="w-full">
+      <div className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
         <Filter className="h-4 w-4" />
         <span>Fonte:</span>
       </div>
-      <Button
-        variant={selectedSource === null ? "default" : "outline"}
-        size="sm"
-        onClick={() => onSourceChange(null)}
-        className="transition-all duration-200"
-      >
-        Todas
-      </Button>
-      {sources.map((source) => (
+      {/* Mobile: quebra automática em múltiplas linhas; Desktop continua compacto */}
+      <div className="flex flex-wrap items-center gap-2 pb-2">
         <Button
-          key={source}
-          variant={selectedSource === source ? "default" : "outline"}
+          variant={selectedSource === null ? "default" : "outline"}
           size="sm"
-          onClick={() => onSourceChange(source)}
-          className="transition-all duration-200"
+          onClick={() => onSourceChange(null)}
+          className="transition-all duration-200 text-xs px-2"
         >
-          {source}
+          Todas
         </Button>
-      ))}
+        {sources.map((source) => (
+          <Button
+            key={source}
+            variant={selectedSource === source ? "default" : "outline"}
+            size="sm"
+            onClick={() => onSourceChange(source)}
+            className="transition-all duration-200 text-xs px-2"
+          >
+            {source}
+          </Button>
+        ))}
+      </div>
     </div>
   );
 };
