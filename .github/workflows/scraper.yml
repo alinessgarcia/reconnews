@@ -1,0 +1,56 @@
+name: News Scraper
+
+on:
+  schedule:
+    # 5 execuções por dia (horários BRT convertidos para UTC)
+    - cron: '0 9 * * *'   # 06:00 BRT -> 09:00 UTC
+    - cron: '0 13 * * *'  # 10:00 BRT -> 13:00 UTC  
+    - cron: '0 17 * * *'  # 14:00 BRT -> 17:00 UTC
+    - cron: '0 21 * * *'  # 18:00 BRT -> 21:00 UTC
+    - cron: '0 1 * * *'   # 22:00 BRT -> 01:00 UTC (next day)
+  
+  # Permite execução manual
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    timeout-minutes: 10
+    concurrency:
+      group: news-scraper
+      cancel-in-progress: false
+    steps:
+      - name: Execute News Scraper with retries
+        env:
+          FUNC_URL: "${{ secrets.SUPABASE_URL }}/functions/v1/scrape-news"
+          TOKEN: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
+        run: |
+          echo "Calling $FUNC_URL"
+          attempt=1
+          max=3
+          status=0
+          while [ $attempt -le $max ]; do
+            echo "Attempt ${attempt}/${max}"
+            http_code=$(curl -sS -w "%{http_code}" -o output.json -X POST \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d '{}' \
+              "$FUNC_URL" || true)
+            status=$?
+            echo "HTTP: ${http_code}"
+            if [ "$http_code" = "200" ]; then
+              echo "Success"
+              break
+            fi
+            echo "Retrying in 60s..."
+            sleep 60
+            attempt=$((attempt+1))
+          done
+          echo "Response body:"
+          cat output.json || true
+          exit 0
+      - name: Summarize
+        if: always()
+        run: |
+          echo "Scraper executed at $(date)"

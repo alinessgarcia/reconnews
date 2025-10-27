@@ -5,6 +5,79 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Verificar robots.txt antes de fazer scraping
+async function checkRobotsTxt(url: string): Promise<boolean> {
+  try {
+    const urlObj = new URL(url);
+    const robotsUrl = `${urlObj.protocol}//${urlObj.host}/robots.txt`;
+    
+    const response = await fetch(robotsUrl, { 
+      headers: { 'User-Agent': 'ReconNews-Bot/1.0' },
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    if (!response.ok) {
+      console.log(`⚠️ Robots.txt não encontrado para ${urlObj.host}, prosseguindo com scraping`);
+      return true; // Se não há robots.txt, assumimos que é permitido
+    }
+    
+    const robotsText = await response.text();
+    const lines = robotsText.split('\n').map(line => line.trim().toLowerCase());
+    
+    let userAgentMatch = false;
+    let disallowed = false;
+    
+    for (const line of lines) {
+      if (line.startsWith('user-agent:')) {
+        const agent = line.split(':')[1].trim();
+        userAgentMatch = agent === '*' || agent.includes('reconnews') || agent.includes('bot');
+      } else if (userAgentMatch && line.startsWith('disallow:')) {
+        const path = line.split(':')[1].trim();
+        if (path === '/' || path === '*') {
+          disallowed = true;
+          break;
+        }
+      }
+    }
+    
+    if (disallowed) {
+      console.log(`🚫 Scraping não permitido pelo robots.txt de ${urlObj.host}`);
+      return false;
+    }
+    
+    console.log(`✅ Scraping permitido pelo robots.txt de ${urlObj.host}`);
+    return true;
+  } catch (error) {
+    console.log(`⚠️ Erro ao verificar robots.txt para ${url}:`, error.message);
+    return true; // Em caso de erro, assumimos que é permitido
+  }
+}
+
+// Fetch com retry e backoff para robustez
+async function fetchWithRetry(url: string, init: RequestInit = {}, attempts = 3, baseTimeoutMs = 10000, backoffMs = 1500): Promise<Response> {
+  let lastError: any = null;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      const res = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(baseTimeoutMs),
+        headers: {
+          'User-Agent': 'ReconNews-Bot/1.0 (Christian News Aggregator)',
+          ...(init.headers || {} as Record<string,string>)
+        }
+      });
+      if (res.ok) return res;
+      lastError = new Error(`HTTP ${res.status}`);
+      console.log(`  ⚠️ Tentativa ${i}/${attempts} falhou para ${url}: HTTP ${res.status}`);
+    } catch (err) {
+      lastError = err;
+      console.log(`  ⚠️ Tentativa ${i}/${attempts} falhou para ${url}: ${err?.message || err}`);
+    }
+    if (i < attempts) await new Promise(r => setTimeout(r, backoffMs * i));
+  }
+  throw lastError || new Error(`Falha ao buscar ${url}`);
+}
+
 interface Article {
   title: string;
   description?: string;
@@ -97,13 +170,22 @@ function cleanCDATA(text: string): string {
 // Parser RSS genérico
 async function parseRSSFeed(url: string, source: string, category: string): Promise<Article[]> {
   try {
+    console.log(`  📡 Verificando robots.txt para: ${source}`);
+    
+    // Verificar robots.txt antes de fazer scraping
+    const robotsAllowed = await checkRobotsTxt(url);
+    if (!robotsAllowed) {
+      console.log(`  🚫 Scraping não permitido pelo robots.txt: ${source}`);
+      return [];
+    }
+    
     console.log(`  📡 Buscando RSS: ${source}`);
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/rss+xml, application/xml, text/xml',
+        'User-Agent': 'ReconNews-Bot/1.0 (Christian News Aggregator)',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
       },
-    });
+    }, 3, 10000, 2000);
 
     if (!response.ok) {
       console.log(`  ✗ ${source}: Erro HTTP ${response.status}`);
@@ -172,8 +254,9 @@ async function scrapeGoogleNews(query: string, category: string): Promise<Articl
   return parseRSSFeed(url, 'Google News', category);
 }
 
-// Fontes RSS de portais evangélicos e cristãos brasileiros
+// Fontes RSS de portais evangélicos, cristãos, arqueologia e história
 const RSS_FEEDS = [
+  // Portais Evangélicos e Cristãos
   {
     url: 'https://noticias.gospelmais.com.br/feed',
     source: 'Gospel+',
@@ -194,15 +277,54 @@ const RSS_FEEDS = [
     source: 'Comunhão',
     category: 'Portal Evangélico',
   },
+  
+  // Arqueologia e História
   {
-    url: 'https://revistagalileu.globo.com/rss/ultimas/feed.xml',
-    source: 'Galileu',
+    url: 'http://www.bbc.co.uk/portuguese/index.xml',
+    source: 'BBC Brasil',
     category: 'Ciência e Arqueologia',
   },
   {
     url: 'https://masp.org.br/feed',
     source: 'MASP',
     category: 'Arte e Arqueologia',
+  },
+  {
+    url: 'https://arqueologia-iab.com.br/blog-de-noticias/feed',
+    source: 'Instituto de Arqueologia Brasileira',
+    category: 'Arqueologia de Jerusalém',
+  },
+  {
+    url: 'https://incrivelhistoria.com.br/feed',
+    source: 'Incrível História',
+    category: 'História Cristã',
+  },
+  {
+    url: 'http://agencia.fapesp.br/rss/',
+    source: 'Agência FAPESP',
+    category: 'Ciência e Pesquisa',
+  },
+  {
+    url: 'https://www.nexojornal.com.br/rss.xml',
+    source: 'Nexo Jornal',
+    category: 'Análises e Ciência',
+  },
+  {
+    url: 'https://feeds.folha.uol.com.br/ciencia/rss091.xml',
+    source: 'Folha de S.Paulo - Ciência',
+    category: 'Ciência',
+  },
+  
+  // Arqueologia Bíblica Internacional
+  {
+    url: 'https://www.biblicalarchaeology.org/feed',
+    source: 'Biblical Archaeology Society',
+    category: 'Evidências Bíblicas',
+  },
+  {
+    url: 'https://pt.christianitytoday.com/feed',
+    source: 'Christianity Today Brasil',
+    category: 'Apologética',
   },
 ];
 
@@ -212,8 +334,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? Deno.env.get('PROJECT_URL') ?? Deno.env.get('RECON_SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY') ?? Deno.env.get('RECON_SERVICE_ROLE_KEY')!;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 

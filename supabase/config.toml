@@ -1,4 +1,4 @@
-project_id = "ohntadcyqsdqghftivou"
+project_id = "kkhqybinqwrndcoeotnu"
 
 [functions.scrape-news]
 verify_jwt = true
