@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Calendar, Newspaper } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { decodeHTML, sanitizeSummary } from "@/lib/utils";
+import { decodeHTML, sanitizeSummary, toProxyImage } from "@/lib/utils";
 
 interface ArticleCardProps {
   title: string;
@@ -38,6 +38,9 @@ export const ArticleCard = ({
   const displayDescription = (descriptionPt || description)
     ? sanitizeSummary(descriptionPt || description || "")
     : undefined;
+  
+  // Usa proxy público para evitar bloqueios de hotlink sem usar Storage
+  const proxiedImage = imageUrl ? toProxyImage(imageUrl, { width: 800, height: 450, fit: 'cover', output: 'webp', dpr: 2 }) : undefined;
 
   const getCategoryColor = (category?: string) => {
     if (!category) return "bg-muted";
@@ -67,7 +70,7 @@ export const ArticleCard = ({
           {imageUrl ? (
             <>
               <img
-                src={imageUrl}
+                src={proxiedImage || imageUrl}
                 alt={title}
                 loading="lazy"
                 decoding="async"

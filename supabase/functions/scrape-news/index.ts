@@ -456,7 +456,8 @@ Deno.serve(async (req) => {
             theme: c.theme,
             scraped_at: new Date().toISOString(),
           },
-          { onConflict: 'url', ignoreDuplicates: true }
+          // Removido ignoreDuplicates para permitir atualização de registros existentes
+          { onConflict: 'url' }
         );
     
       if (!error) {

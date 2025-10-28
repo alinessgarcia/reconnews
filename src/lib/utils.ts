@@ -135,3 +135,37 @@ export function facetCounts(articles: { title: string; description?: string }[])
   counts.themes['all'] = articles.length;
   return counts;
 }
+
+// ===== Imagens: proxy leve sem usar armazenamento =====
+// Constrói uma URL via images.weserv.nl para servir imagens externas de forma anônima,
+// reduzindo bloqueios de hotlink e melhorando a entrega sem ocupar Storage.
+// Docs: https://images.weserv.nl/
+export function toProxyImage(
+  url?: string,
+  opts: {
+    width?: number;
+    height?: number;
+    fit?: 'cover' | 'contain' | 'inside' | 'outside';
+    output?: 'webp' | 'jpeg' | 'png';
+    dpr?: number;
+  } = {}
+): string | undefined {
+  if (!url) return undefined;
+  // Evitar reproxiar se já estiver no serviço
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes('images.weserv.nl')) return url;
+    // Monta domain+path sem protocolo conforme recomendação do serviço
+    const domainAndPath = `${u.hostname}${u.pathname}${u.search || ''}`;
+    const width = opts.width ?? 800;
+    const height = opts.height ?? 450;
+    const fit = opts.fit ?? 'cover';
+    const output = opts.output ?? 'webp';
+    const dpr = opts.dpr ?? 1;
+    const qp = `url=${encodeURIComponent(domainAndPath)}&w=${width}&h=${height}&fit=${fit}&output=${output}&dpr=${dpr}`;
+    return `https://images.weserv.nl/?${qp}`;
+  } catch {
+    // Se URL inválida, retorna original para não quebrar
+    return url;
+  }
+}
