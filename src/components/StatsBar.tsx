@@ -1,4 +1,4 @@
-import { TrendingUp, Newspaper, Clock, Award } from "lucide-react";
+import { TrendingUp, Newspaper, Award } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 interface StatsBarProps {
@@ -10,7 +10,7 @@ interface StatsBarProps {
 
 export const StatsBar = ({ totalArticles, todayArticles, sources, lastUpdate }: StatsBarProps) => {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
       <Card className="p-3 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg bg-primary/10">
@@ -47,17 +47,7 @@ export const StatsBar = ({ totalArticles, todayArticles, sources, lastUpdate }: 
         </div>
       </Card>
 
-      <Card className="p-3 bg-gradient-to-br from-muted/50 to-muted/20 border-border">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-muted">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-foreground leading-none">5x ao dia</p>
-            <p className="text-xs text-muted-foreground">Atualização automática</p>
-          </div>
-        </div>
-      </Card>
+      {/* Removido card de horários de atualização conforme solicitação */}
     </div>
   );
 };

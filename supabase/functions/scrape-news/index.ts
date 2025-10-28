@@ -208,12 +208,49 @@ async function parseRSSFeed(url: string, source: string, category: string): Prom
       const description = extractXMLTag(itemXml, 'description');
       const pubDate = extractXMLTag(itemXml, 'pubDate');
       
-      // Tentar extrair imagem da descrição
+      // Tentar extrair imagem de múltiplos campos (description, enclosure, media:content, media:thumbnail)
       let imageUrl: string | undefined;
       if (description) {
         const imgMatch = description.match(/<img[^>]+src=["']([^"']+)["']/i);
         if (imgMatch) {
           imageUrl = imgMatch[1];
+        }
+      }
+      if (!imageUrl) {
+        const enclosureMatch = itemXml.match(/<enclosure[^>]*url=["']([^"']+)["'][^>]*>/i);
+        if (enclosureMatch) {
+          imageUrl = enclosureMatch[1];
+        }
+      }
+      if (!imageUrl) {
+        const mediaContentMatch = itemXml.match(/<media:content[^>]*url=["']([^"']+)["'][^>]*>/i);
+        if (mediaContentMatch) {
+          imageUrl = mediaContentMatch[1];
+        }
+      }
+      if (!imageUrl) {
+        const mediaThumbMatch = itemXml.match(/<media:thumbnail[^>]*url=["']([^"']+)["'][^>]*>/i);
+        if (mediaThumbMatch) {
+          imageUrl = mediaThumbMatch[1];
+        }
+      }
+      // Fallback: buscar a página e extrair og:image ou twitter:image
+      if (!imageUrl && link) {
+        try {
+          const pageRes = await fetchWithRetry(cleanCDATA(link), { headers: { 'User-Agent': 'ReconNews-Bot/1.0' } }, 2, 7000, 1500);
+          if (pageRes.ok) {
+            const html = await pageRes.text();
+            const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+            const twMatch = html.match(/<meta[^>]+name=["']twitter:image[^"']*["'][^>]+content=["']([^"']+)["']/i);
+            const inlineImgMatch = html.match(/<img[^>]+src=["']([^"']+\.(?:jpg|jpeg|png|webp))["'][^>]*>/i);
+            imageUrl = (ogMatch?.[1] || twMatch?.[1] || inlineImgMatch?.[1]);
+            if (imageUrl && imageUrl.startsWith('/')) {
+              const base = new URL(cleanCDATA(link));
+              imageUrl = `${base.protocol}//${base.host}${imageUrl}`;
+            }
+          }
+        } catch (err) {
+          console.log(`  ⚠️ Falha ao buscar imagem de ${source}:`, err?.message || err);
         }
       }
 

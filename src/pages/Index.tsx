@@ -242,9 +242,7 @@ const Index = () => {
                 <p className="text-primary-foreground/90 text-lg font-medium">
                   Descobertas cristãs, achados arqueológicos sérios e pesquisas históricas
                 </p>
-                <p className="text-primary-foreground/75 text-sm mt-1">
-                  ⚡ Atualização automática 5x ao dia
-                </p>
+                {/* Removido texto sobre horários/frequência de atualização conforme solicitação */}
               </div>
             </div>
             <div className="flex gap-3">
@@ -408,7 +406,7 @@ const Index = () => {
             ) : (
               <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="gap-1" onClick={() => setFiltersOpen(!filtersOpen)}>
+                  <Button variant="outline" size="default" className="gap-1" onClick={() => setFiltersOpen(!filtersOpen)}>
                     <Filter className="h-4 w-4" />
                     Filtros
                     {filtersOpen ? (
@@ -423,9 +421,9 @@ const Index = () => {
                     <SearchBar value={searchQuery} onChange={setSearchQuery} />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Fonte</label>
+                    <label className="text-sm font-medium text-muted-foreground">Fonte</label>
                     <Select value={selectedSource ?? "__all__"} onValueChange={(v) => setSelectedSource(v === "__all__" ? null : v)}>
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger className="h-10 text-sm">
                         <SelectValue placeholder="Todas" />
                       </SelectTrigger>
                       <SelectContent>
@@ -437,9 +435,9 @@ const Index = () => {
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Categoria</label>
+                    <label className="text-sm font-medium text-muted-foreground">Categoria</label>
                     <Select value={selectedCategory ?? "__all__"} onValueChange={(v) => setSelectedCategory(v === "__all__" ? null : v)}>
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger className="h-10 text-sm">
                         <SelectValue placeholder="Todas" />
                       </SelectTrigger>
                       <SelectContent>
@@ -451,9 +449,9 @@ const Index = () => {
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Região/Civilizações</label>
+                    <label className="text-sm font-medium text-muted-foreground">Região/Civilizações</label>
                     <Select value={selectedRegion ?? "__all__"} onValueChange={(v) => setSelectedRegion(v === "__all__" ? null : v)}>
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger className="h-10 text-sm">
                         <SelectValue placeholder="Todas" />
                       </SelectTrigger>
                       <SelectContent>
@@ -465,9 +463,9 @@ const Index = () => {
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Tipo de Evidência</label>
+                    <label className="text-sm font-medium text-muted-foreground">Tipo de Evidência</label>
                     <Select value={selectedEvidence ?? "__all__"} onValueChange={(v) => setSelectedEvidence(v === "__all__" ? null : v)}>
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger className="h-10 text-sm">
                         <SelectValue placeholder="Todas" />
                       </SelectTrigger>
                       <SelectContent>
@@ -479,9 +477,9 @@ const Index = () => {
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Tema</label>
+                    <label className="text-sm font-medium text-muted-foreground">Tema</label>
                     <Select value={selectedTheme ?? "__all__"} onValueChange={(v) => setSelectedTheme(v === "__all__" ? null : v)}>
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger className="h-10 text-sm">
                         <SelectValue placeholder="Todos" />
                       </SelectTrigger>
                       <SelectContent>
@@ -492,8 +490,8 @@ const Index = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="col-span-3 flex items-center justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => {
+                  <div className="col-span-3 flex items-center justify-start gap-2">
+                    <Button variant="outline" size="default" onClick={() => {
                       setSelectedSource(null);
                       setSelectedCategory(null);
                       setSelectedRegion(null);
@@ -501,7 +499,7 @@ const Index = () => {
                       setSelectedTheme(null);
                       setSearchQuery("");
                     }}>Limpar filtros</Button>
-                    <Button size="sm" onClick={() => setFiltersOpen(false)}>Aplicar</Button>
+                    <Button size="default" onClick={() => setFiltersOpen(false)}>Aplicar</Button>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
@@ -540,7 +538,7 @@ const Index = () => {
               <p className="text-muted-foreground max-w-md mx-auto">
                 {searchQuery || selectedCategory || selectedSource || selectedRegion || selectedEvidence || selectedTheme
                   ? "Tente ajustar seus filtros ou busca"
-                  : "O sistema coleta notícias automaticamente 5x ao dia"
+                  : "As notícias são coletadas automaticamente a partir de fontes públicas"
                 }
               </p>
             </div>
@@ -599,16 +597,9 @@ const Index = () => {
             </div>
             <div>
               <h4 className="font-semibold text-sm mb-3">ATUALIZAÇÃO</h4>
-              <p className="text-sm text-muted-foreground mb-2">
-                Sistema automático de coleta
+              <p className="text-sm text-muted-foreground">
+                Sistema automático de coleta (sem divulgação de horários)
               </p>
-              <div className="flex flex-col gap-1 text-sm">
-                <span className="text-primary font-medium">⏰ 06:00 (Manhã)</span>
-                <span className="text-primary font-medium">⏰ 10:00 (Manhã)</span>
-                <span className="text-primary font-medium">⏰ 14:00 (Tarde)</span>
-                <span className="text-primary font-medium">⏰ 18:00 (Tarde)</span>
-                <span className="text-primary font-medium">⏰ 22:00 (Noite)</span>
-              </div>
             </div>
           </div>
           <Separator className="mb-6" />
