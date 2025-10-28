@@ -28,9 +28,11 @@ jobs:
 
       - name: Set secrets for Edge Functions
         run: |
+          # Os nomes de secret não podem começar com "SUPABASE_". 
+          # A função scrape-news já lê alternativas PROJECT_URL e SERVICE_ROLE_KEY.
           supabase secrets set \
-            SUPABASE_URL="${{ secrets.SUPABASE_URL }}" \
-            SUPABASE_SERVICE_ROLE_KEY="${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
+            PROJECT_URL="${{ secrets.SUPABASE_URL }}" \
+            SERVICE_ROLE_KEY="${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
 
       - name: Deploy scrape-news
         run: supabase functions deploy scrape-news
