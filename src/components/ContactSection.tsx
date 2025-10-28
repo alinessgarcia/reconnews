@@ -42,7 +42,7 @@ export const ContactSection = () => {
         hour12: false,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
-      await emailjs.send(
+      const res = await emailjs.send(
         serviceId!,
         templateId!,
         {
@@ -59,13 +59,24 @@ export const ContactSection = () => {
         },
         { publicKey: publicKey! }
       );
-      toast({ title: "Mensagem enviada", description: "Obrigado! Entraremos em contato em breve." });
+      // Se a API retornar status/texte, aproveitamos para exibir confirmação mais clara
+      const okText = typeof res === 'object' && 'status' in res ? `Status: ${String((res as any).status)}` : undefined;
+      toast({
+        title: "Mensagem enviada",
+        description: okText ? `Obrigado! ${okText}` : "Obrigado! Entraremos em contato em breve.",
+      });
       setName("");
       setEmail("");
       setMessage("");
     } catch (err: any) {
       console.error("EmailJS error", err);
-      toast({ title: "Falha ao enviar", description: "Tente novamente mais tarde.", variant: "destructive" });
+      // Tentar extrair um motivo amigável
+      const detail = err?.text || err?.message || (typeof err === 'string' ? err : undefined);
+      toast({
+        title: "Falha ao enviar",
+        description: detail ? String(detail) : "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

@@ -37,9 +37,10 @@ export const ArticleCard = ({
     : null;
 
   const displayTitle = decodeHTML(titlePt || title);
-  const displayDescription = (descriptionPt || description)
-    ? sanitizeSummary(descriptionPt || description || "")
-    : undefined;
+  const rawDescription = descriptionPt || description || "";
+  const sanitized = sanitizeSummary(rawDescription);
+  // Fallback: se a sanitização remover tudo, use o texto bruto para não ficar sem resumo
+  const displayDescription = sanitized && sanitized.length > 0 ? sanitized : (rawDescription || undefined);
   
   // Usa proxy público para evitar bloqueios de hotlink sem usar Storage
   const proxiedImage = imageUrl ? toProxyImage(imageUrl, { width: 800, height: 450, fit: 'cover', output: 'webp', dpr: 2 }) : undefined;
@@ -110,8 +111,8 @@ export const ArticleCard = ({
             {displayTitle}
           </h3>
           
-          {displayDescription && (
-            <Dialog>
+          <Dialog>
+            {displayDescription ? (
               <DialogTrigger asChild>
                 <p
                   className="text-sm text-muted-foreground leading-relaxed line-clamp-3 cursor-pointer"
@@ -120,35 +121,43 @@ export const ArticleCard = ({
                   {displayDescription}
                 </p>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{displayTitle}</DialogTitle>
-                  {source && (
-                    <DialogDescription>
-                      Fonte: {source}{formattedDate ? ` • ${formattedDate}` : ''}
-                    </DialogDescription>
-                  )}
-                </DialogHeader>
-                {imageUrl && (
-                  <img
-                    src={proxiedImage || imageUrl}
-                    alt={title}
-                    className="w-full h-auto rounded-md"
-                  />
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                <span className="italic">Sem resumo via RSS. Clique em "Resumo" para detalhes ou "Ler mais" para abrir o original.</span>
+              </div>
+            )}
+            <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{displayTitle}</DialogTitle>
+                {source && (
+                  <DialogDescription>
+                    Fonte: {source}{formattedDate ? ` • ${formattedDate}` : ''}
+                  </DialogDescription>
                 )}
-                {displayDescription && (
-                  <p className="text-sm text-foreground leading-relaxed">
-                    {displayDescription}
-                  </p>
-                )}
-                <DialogFooter className="gap-2">
-                  <a href={url} target="_blank" rel="noopener noreferrer">
-                    <Button size="sm">Abrir original</Button>
-                  </a>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
+              </DialogHeader>
+              {imageUrl && (
+                <img
+                  src={proxiedImage || imageUrl}
+                  alt={title}
+                  className="w-full h-auto rounded-md"
+                />
+              )}
+              {displayDescription ? (
+                <p className="text-sm text-foreground leading-relaxed">
+                  {displayDescription}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Este artigo não fornece resumo adequado via RSS. Use "Abrir original" para ler na fonte.
+                </p>
+              )}
+              <DialogFooter className="gap-2">
+                <a href={url} target="_blank" rel="noopener noreferrer">
+                  <Button size="sm">Abrir original</Button>
+                </a>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           
           <div className="flex items-center justify-between pt-3 border-t border-border">
             {formattedDate && (
@@ -189,9 +198,13 @@ export const ArticleCard = ({
                       className="w-full h-auto rounded-md"
                     />
                   )}
-                  {displayDescription && (
+                  {displayDescription ? (
                     <p className="text-sm text-foreground leading-relaxed">
                       {displayDescription}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Este artigo não fornece resumo adequado via RSS. Use "Abrir original" para ler na fonte.
                     </p>
                   )}
                   <DialogFooter className="gap-2">

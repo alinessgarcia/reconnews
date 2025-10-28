@@ -138,14 +138,20 @@ const Index = () => {
       }
 
       setCollectProgress(100);
-      
+
       // Aguardar um pouco e recarregar os artigos
       await new Promise(resolve => setTimeout(resolve, 500));
       await fetchArticles();
-      
+
+      const processed = data?.uniqueArticles ?? 0;
+      const inserted = data?.newArticles ?? 0;
+      const msgBase = processed > 0
+        ? `${processed} artigos foram verificados e atualizados.`
+        : `As fontes foram verificadas. Obrigado por cooperar!`;
+      const msgNew = inserted > 0 ? ` (${inserted} novos)` : "";
       toast({
-        title: "Coleta concluída!",
-        description: `${data?.newArticles || 0} novos artigos foram coletados.`,
+        title: "Obrigado por cooperar!",
+        description: `${msgBase}${msgNew}`,
       });
       
       // Reset após mostrar 100%
