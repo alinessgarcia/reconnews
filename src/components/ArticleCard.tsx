@@ -72,15 +72,16 @@ export const ArticleCard = ({
                 className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
-                  e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    parent.innerHTML = `<img src="/placeholder.svg" alt="Imagem indisponível" class="h-full w-full object-cover" />`;
+                  }
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             </>
           ) : (
-            <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-muted via-muted/80 to-muted/60">
-              <Newspaper className="h-16 w-16 text-muted-foreground/30" />
-            </div>
+            <img src="/placeholder.svg" alt="Imagem indisponível" className="h-full w-full object-cover" />
           )}
           {category && (
             <div className="absolute top-3 left-3">

@@ -1,19 +1,21 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ArticleCard } from "@/components/ArticleCard";
-import { NewsFilters } from "@/components/NewsFilters";
-import { CategoryFilter } from "@/components/CategoryFilter";
+// Substituído por controles compactos de Select no painel de filtros
 import { StatsBar } from "@/components/StatsBar";
 import { SearchBar } from "@/components/SearchBar";
 import { Pagination } from "@/components/Pagination";
 import { CollectingBar } from "@/components/CollectingBar";
 import { Newspaper, RefreshCw, Filter, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerClose } from "@/components/ui/drawer";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { REGIONS_CIVILIZATIONS, EVIDENCE_TYPES, THEMES, facetCounts, classifyArticle } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Article {
   id: string;
@@ -49,6 +51,7 @@ const Index = () => {
   const [isCollecting, setIsCollecting] = useState(false);
   const [collectProgress, setCollectProgress] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   
   const ITEMS_PER_PAGE = 12;
@@ -286,33 +289,223 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Filters and Search */}
+      {/* Filters and Search (Compacto, com Drawer no mobile e Collapsible no desktop) */}
       <main className="container mx-auto max-w-7xl px-4">
         <div className="mt-8">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Explorar Notícias</h2>
-            <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="gap-1" onClick={() => setFiltersOpen(!filtersOpen)}>
-                  <Filter className="h-4 w-4" />
-                  Filtros
-                  {filtersOpen ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              <CollapsibleContent className="mt-4 space-y-4">
-                <SearchBar value={searchQuery} onChange={setSearchQuery} />
-                <CategoryFilter categories={categories} selectedCategory={selectedCategory} onCategoryChange={setSelectedCategory} counts={categoryCounts} />
-                <NewsFilters
-                  selectedSource={selectedSource}
-                  onSourceChange={setSelectedSource}
-                  sources={sources}
-                />
-              </CollapsibleContent>
-            </Collapsible>
+            {isMobile ? (
+              <Drawer>
+                <DrawerTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1">
+                    <Filter className="h-4 w-4" />
+                    Filtros
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent className="p-4">
+                  <DrawerHeader>
+                    <DrawerTitle>Filtros</DrawerTitle>
+                  </DrawerHeader>
+                  <div className="space-y-4">
+                    <SearchBar value={searchQuery} onChange={setSearchQuery} />
+                    <div className="grid grid-cols-1 gap-3">
+                      {/* Fonte */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground">Fonte</label>
+                        <Select value={selectedSource ?? "__all__"} onValueChange={(v) => setSelectedSource(v === "__all__" ? null : v)}>
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Selecione a fonte" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__all__">Todas</SelectItem>
+                            {sources.map((s) => (
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {/* Categoria */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground">Categoria</label>
+                        <Select value={selectedCategory ?? "__all__"} onValueChange={(v) => setSelectedCategory(v === "__all__" ? null : v)}>
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Selecione a categoria" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__all__">Todas</SelectItem>
+                            {categories.map((c) => (
+                              <SelectItem key={c} value={c}>{c}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {/* Taxonomia Acadêmica */}
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-muted-foreground">Região/Civilizações</label>
+                          <Select value={selectedRegion ?? "__all__"} onValueChange={(v) => setSelectedRegion(v === "__all__" ? null : v)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Todas" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__all__">Todas</SelectItem>
+                              {REGIONS_CIVILIZATIONS.map((r) => (
+                                <SelectItem key={r} value={r}>{r}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-muted-foreground">Tipo de Evidência</label>
+                          <Select value={selectedEvidence ?? "__all__"} onValueChange={(v) => setSelectedEvidence(v === "__all__" ? null : v)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Todas" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__all__">Todas</SelectItem>
+                              {EVIDENCE_TYPES.map((e) => (
+                                <SelectItem key={e} value={e}>{e}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-muted-foreground">Tema</label>
+                          <Select value={selectedTheme ?? "__all__"} onValueChange={(v) => setSelectedTheme(v === "__all__" ? null : v)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Todos" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__all__">Todos</SelectItem>
+                              {THEMES.map((t) => (
+                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <DrawerFooter className="mt-4">
+                    <div className="flex items-center justify-between">
+                      <Button variant="outline" size="sm" onClick={() => {
+                        setSelectedSource(null);
+                        setSelectedCategory(null);
+                        setSelectedRegion(null);
+                        setSelectedEvidence(null);
+                        setSelectedTheme(null);
+                        setSearchQuery("");
+                      }}>Limpar filtros</Button>
+                      <DrawerClose asChild>
+                        <Button size="sm" className="gap-1">
+                          Aplicar
+                        </Button>
+                      </DrawerClose>
+                    </div>
+                  </DrawerFooter>
+                </DrawerContent>
+              </Drawer>
+            ) : (
+              <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="gap-1" onClick={() => setFiltersOpen(!filtersOpen)}>
+                    <Filter className="h-4 w-4" />
+                    Filtros
+                    {filtersOpen ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <CollapsibleContent className="mt-4 grid grid-cols-3 gap-4">
+                  <div className="col-span-3">
+                    <SearchBar value={searchQuery} onChange={setSearchQuery} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Fonte</label>
+                    <Select value={selectedSource ?? "__all__"} onValueChange={(v) => setSelectedSource(v === "__all__" ? null : v)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todas</SelectItem>
+                        {sources.map((s) => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Categoria</label>
+                    <Select value={selectedCategory ?? "__all__"} onValueChange={(v) => setSelectedCategory(v === "__all__" ? null : v)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todas</SelectItem>
+                        {categories.map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Região/Civilizações</label>
+                    <Select value={selectedRegion ?? "__all__"} onValueChange={(v) => setSelectedRegion(v === "__all__" ? null : v)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todas</SelectItem>
+                        {REGIONS_CIVILIZATIONS.map((r) => (
+                          <SelectItem key={r} value={r}>{r}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Tipo de Evidência</label>
+                    <Select value={selectedEvidence ?? "__all__"} onValueChange={(v) => setSelectedEvidence(v === "__all__" ? null : v)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todas</SelectItem>
+                        {EVIDENCE_TYPES.map((e) => (
+                          <SelectItem key={e} value={e}>{e}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Tema</label>
+                    <Select value={selectedTheme ?? "__all__"} onValueChange={(v) => setSelectedTheme(v === "__all__" ? null : v)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todos</SelectItem>
+                        {THEMES.map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-3 flex items-center justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => {
+                      setSelectedSource(null);
+                      setSelectedCategory(null);
+                      setSelectedRegion(null);
+                      setSelectedEvidence(null);
+                      setSelectedTheme(null);
+                      setSearchQuery("");
+                    }}>Limpar filtros</Button>
+                    <Button size="sm" onClick={() => setFiltersOpen(false)}>Aplicar</Button>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
           </div>
 
           {/* Results header */}
