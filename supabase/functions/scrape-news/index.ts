@@ -262,7 +262,9 @@ async function parseRSSFeed(url: string, source: string, category: string): Prom
           .replace(/•?\s*Leia mais.*$/i, '')
           .replace(/…$/g, '')
           .trim()
-          .substring(0, 300);
+          // Aumenta o tamanho do resumo para oferecer mais contexto no popup
+          // Mantém limite razoável para não estourar layout; o Dialog terá scroll
+          .substring(0, 1500);
       }
 
       articles.push({
@@ -365,6 +367,25 @@ const RSS_FEEDS = [
   },
 ];
 
+// Política editorial: permitir apenas fontes alinhadas ao conservadorismo e à comunidade evangélica
+// Você pode personalizar via variáveis de ambiente RECON_ALLOWED_SOURCES (nomes) e RECON_BLOCKED_HOSTS (domínios)
+const FEEDS_ALLOWLIST = new Set(
+  (Deno.env.get('RECON_ALLOWED_SOURCES')?.split(',').map(s => s.trim()).filter(Boolean)) ?? [
+    'Gospel+',
+    'Voltemos ao Evangelho',
+    'Pleno News',
+    'Comunhão',
+    'Biblical Archaeology Society',
+    'Christianity Today Brasil',
+  ]
+);
+
+const BLOCKED_HOSTS = new Set(
+  (Deno.env.get('RECON_BLOCKED_HOSTS')?.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)) ?? [
+    'bbc.co.uk', 'bbc.com', 'nexojornal.com.br', 'folha.uol.com.br', 'agencia.fapesp.br', 'masp.org.br', 'incrivelhistoria.com.br', 'arqueologia-iab.com.br'
+  ]
+);
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -415,9 +436,13 @@ Deno.serve(async (req) => {
       await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limiting
     }
 
-    // Buscar RSS feeds especializados
-    console.log('\n📚 Buscando feeds RSS especializados...');
+    // Buscar RSS feeds especializados (filtrados pela política editorial)
+    console.log('\n📚 Buscando feeds RSS especializados (política editorial ativa)...');
     for (const feed of RSS_FEEDS) {
+      if (!FEEDS_ALLOWLIST.has(feed.source)) {
+        console.log(`  ⏭️ Ignorando feed não permitido pela política: ${feed.source}`);
+        continue;
+      }
       const articles = await parseRSSFeed(feed.url, feed.source, feed.category);
       allArticles.push(...articles);
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -432,7 +457,20 @@ Deno.serve(async (req) => {
         acc.push(article);
       }
       return acc;
-    }, [] as Article[]);
+    }, [] as Article[])
+    // Aplicar bloqueio por domínio (host) adicional
+    .filter(a => {
+      try {
+        const host = new URL(a.url).hostname.toLowerCase();
+        if (BLOCKED_HOSTS.has(host)) {
+          console.log(`  🚫 Bloqueado por domínio: ${host}`);
+          return false;
+        }
+        return true;
+      } catch {
+        return true;
+      }
+    });
 
     console.log(`📊 Artigos únicos após deduplicação: ${uniqueArticles.length}`);
 

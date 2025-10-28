@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ArticleCard } from "@/components/ArticleCard";
 // Substituído por controles compactos de Select no painel de filtros
-import { StatsBar } from "@/components/StatsBar";
+// StatsBar removido conforme solicitação: dados visíveis não relevantes ao público
 import { SearchBar } from "@/components/SearchBar";
 import { Pagination } from "@/components/Pagination";
 import { CollectingBar } from "@/components/CollectingBar";
@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { REGIONS_CIVILIZATIONS, EVIDENCE_TYPES, THEMES, facetCounts, classifyArticle } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/hooks/use-mobile";
+import ContactSection from "@/components/ContactSection";
 
 interface Article {
   id: string;
@@ -272,18 +273,7 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Stats Bar */}
-          <div className="mt-10">
-            <StatsBar
-              totalArticles={articles.length}
-              todayArticles={articles.filter(a => {
-                const published = a.published_at ? new Date(a.published_at) : null;
-                const today = new Date();
-                return published && published.toDateString() === today.toDateString();
-              }).length}
-              sources={[...new Set(articles.map(a => a.source))].length}
-            />
-          </div>
+          {/* Área de estatísticas removida */}
         </div>
       </header>
 
@@ -568,6 +558,8 @@ const Index = () => {
                   onPageChange={setCurrentPage}
                 />
               </div>
+              {/* Área de Contato */}
+              <ContactSection />
             </>
           )}
         </div>

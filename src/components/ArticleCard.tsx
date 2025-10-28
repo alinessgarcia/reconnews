@@ -1,6 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Calendar, Newspaper } from "lucide-react";
+import { ExternalLink, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { decodeHTML, sanitizeSummary, toProxyImage } from "@/lib/utils";
@@ -60,12 +62,7 @@ export const ArticleCard = ({
 
   return (
     <Card className="group overflow-hidden transition-all duration-300 hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)] border-border hover:border-primary/30 bg-gradient-to-b from-card to-card/95">
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block h-full"
-      >
+      <div className="block h-full">
         <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-muted via-muted to-muted/70">
           {imageUrl ? (
             <>
@@ -114,9 +111,43 @@ export const ArticleCard = ({
           </h3>
           
           {displayDescription && (
-            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-              {displayDescription}
-            </p>
+            <Dialog>
+              <DialogTrigger asChild>
+                <p
+                  className="text-sm text-muted-foreground leading-relaxed line-clamp-3 cursor-pointer"
+                  title="Abrir resumo"
+                >
+                  {displayDescription}
+                </p>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{displayTitle}</DialogTitle>
+                  {source && (
+                    <DialogDescription>
+                      Fonte: {source}{formattedDate ? ` • ${formattedDate}` : ''}
+                    </DialogDescription>
+                  )}
+                </DialogHeader>
+                {imageUrl && (
+                  <img
+                    src={proxiedImage || imageUrl}
+                    alt={title}
+                    className="w-full h-auto rounded-md"
+                  />
+                )}
+                {displayDescription && (
+                  <p className="text-sm text-foreground leading-relaxed">
+                    {displayDescription}
+                  </p>
+                )}
+                <DialogFooter className="gap-2">
+                  <a href={url} target="_blank" rel="noopener noreferrer">
+                    <Button size="sm">Abrir original</Button>
+                  </a>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           )}
           
           <div className="flex items-center justify-between pt-3 border-t border-border">
@@ -126,13 +157,54 @@ export const ArticleCard = ({
                 <span>{formattedDate}</span>
               </div>
             )}
-            <div className="flex items-center gap-1.5 text-xs font-medium text-primary group-hover:gap-2 transition-all">
-              <span>Ler mais</span>
-              <ExternalLink className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-2">
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-medium text-primary inline-flex items-center gap-1.5 hover:gap-2 transition-all"
+              >
+                <span>Ler mais</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-xs">
+                    Resumo
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>{displayTitle}</DialogTitle>
+                    {source && (
+                      <DialogDescription>
+                        Fonte: {source}{formattedDate ? ` • ${formattedDate}` : ''}
+                      </DialogDescription>
+                    )}
+                  </DialogHeader>
+                  {imageUrl && (
+                    <img
+                      src={proxiedImage || imageUrl}
+                      alt={title}
+                      className="w-full h-auto rounded-md"
+                    />
+                  )}
+                  {displayDescription && (
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {displayDescription}
+                    </p>
+                  )}
+                  <DialogFooter className="gap-2">
+                    <a href={url} target="_blank" rel="noopener noreferrer">
+                      <Button size="sm">Abrir original</Button>
+                    </a>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </div>
-      </a>
+      </div>
     </Card>
   );
 };

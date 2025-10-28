@@ -28,6 +28,8 @@ export function decodeHTML(text: string): string {
 export function sanitizeSummary(text: string): string {
   const decoded = decodeHTML(text);
   return decoded
+    // Remove quaisquer tags HTML remanescentes (ex.: <p>, </p>, <strong>, etc.)
+    .replace(/<[^>]*>/g, ' ')
     .replace(/The post[\s\S]*$/i, '')
     .replace(/•?\s*Leia mais.*$/i, '')
     .replace(/\s+/g, ' ')
