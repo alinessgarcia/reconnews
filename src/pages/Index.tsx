@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { REGIONS_CIVILIZATIONS, EVIDENCE_TYPES, THEMES, facetCounts, classifyArticle } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/hooks/use-mobile";
-import ContactSection from "@/components/ContactSection";
+// ContactSection removido: sistema de e-mail desativado
 
 interface Article {
   id: string;
@@ -564,8 +564,7 @@ const Index = () => {
                   onPageChange={setCurrentPage}
                 />
               </div>
-              {/* Área de Contato */}
-              <ContactSection />
+              {/* Área de Contato removida */}
             </>
           )}
         </div>
