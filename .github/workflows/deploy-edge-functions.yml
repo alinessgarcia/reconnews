@@ -30,11 +30,17 @@ jobs:
         run: |
           # Os nomes de secret não podem começar com "SUPABASE_". 
           # A função scrape-news já lê alternativas PROJECT_URL e SERVICE_ROLE_KEY.
+          # Compatibilidade: aceitar RECON_TRANSLATION_PROVIDER (preferido) ou RECON_TRANSLATOR_PROVIDER (caso tenha sido criado por engano).
+          PROVIDER="${{ secrets.RECON_TRANSLATION_PROVIDER }}"
+          if [ -z "$PROVIDER" ]; then
+            PROVIDER="${{ secrets.RECON_TRANSLATOR_PROVIDER }}"
+          fi
+
           supabase secrets set \
             PROJECT_URL="${{ secrets.SUPABASE_URL }}" \
             SERVICE_ROLE_KEY="${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             # Provedor de tradução (ex.: deepl) e chave de API
-            RECON_TRANSLATION_PROVIDER="${{ secrets.RECON_TRANSLATION_PROVIDER }}" \
+            RECON_TRANSLATION_PROVIDER="$PROVIDER" \
             RECON_DEEPL_API_KEY="${{ secrets.RECON_DEEPL_API_KEY }}" \
             # Política editorial opcional
             RECON_ALLOWED_SOURCES="${{ secrets.RECON_ALLOWED_SOURCES }}" \
