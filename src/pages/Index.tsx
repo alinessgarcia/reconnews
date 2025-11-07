@@ -575,9 +575,9 @@ const Index = () => {
       {/* Footer */}
       <footer className="bg-gradient-to-b from-background to-muted/20 border-t border-border mt-20 py-12">
         <div className="container mx-auto max-w-7xl px-4">
-          <div className="grid md:grid-cols-3 gap-8 mb-8">
+          <div className="grid md:grid-cols-2 gap-8 mb-8 justify-items-center text-center">
             <div>
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center justify-center gap-3 mb-3">
                 <img src="/favicon-32x32.png" alt="ReconNews Logo" className="h-8 w-8 rounded-md" />
                 <h4 className="font-bold text-lg">ReconNews</h4>
               </div>
@@ -593,12 +593,6 @@ const Index = () => {
                 <li>✓ Cidades e Personagens Bíblicos</li>
                 <li>✓ Pesquisadores Renomados</li>
               </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm mb-3">ATUALIZAÇÃO</h4>
-              <p className="text-sm text-muted-foreground">
-                Sistema automático de coleta (sem divulgação de horários)
-              </p>
             </div>
           </div>
           <Separator className="mb-6" />
