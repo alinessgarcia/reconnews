@@ -88,6 +88,75 @@ interface Article {
   category?: string;
 }
 
+// ===== Tradução e extração de conteúdo para resumo estendido =====
+function isLikelyEnglish(text: string): boolean {
+  const s = (text || '').toLowerCase();
+  // Heurística simples: presença de termos comuns em inglês e ausência de acentos
+  const commonEn = [' the ', ' of ', ' and ', ' in ', ' on ', ' with ', ' for ', ' from ', ' by '];
+  const hasAccents = /[áéíóúâêîôûãõç]/i.test(s);
+  const enHits = commonEn.filter(w => s.includes(w)).length;
+  return enHits >= 2 && !hasAccents;
+}
+
+async function translateTextToPt(text: string): Promise<{ translated: string; provider: string } | null> {
+  const provider = (Deno.env.get('RECON_TRANSLATION_PROVIDER') || '').toLowerCase();
+  if (!provider) return null;
+
+  try {
+    if (provider === 'deepl') {
+      const key = Deno.env.get('RECON_DEEPL_API_KEY') || Deno.env.get('DEEPL_API_KEY');
+      if (!key) return null;
+      const params = new URLSearchParams();
+      params.set('text', text);
+      // DeepL aceita 'PT-BR' ou 'PT'; usamos PT-BR para melhor regionalização
+      params.set('target_lang', 'PT-BR');
+      const res = await fetch('https://api-free.deepl.com/v2/translate', {
+        method: 'POST',
+        headers: {
+          'Authorization': `DeepL-Auth-Key ${key}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'ReconNews-Bot/1.0'
+        },
+        body: params,
+        signal: AbortSignal.timeout(12000)
+      });
+      if (!res.ok) {
+        console.log('⚠️ Falha DeepL:', res.status, await res.text());
+        return null;
+      }
+      const data = await res.json();
+      const translated = data?.translations?.[0]?.text || '';
+      return translated ? { translated, provider: 'deepl' } : null;
+    }
+    // Espaço para outros provedores (openai, google)
+    return null;
+  } catch (err) {
+    console.log('⚠️ Erro ao traduzir:', err?.message || err);
+    return null;
+  }
+}
+
+function stripTags(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractMainContent(html: string): string {
+  // Tenta pegar <article>, depois <main>, senão junta <p> e fallback body
+  const articleMatch = html.match(/<article[\s\S]*?<\/article>/i);
+  if (articleMatch) return stripTags(articleMatch[0]);
+  const mainMatch = html.match(/<main[\s\S]*?<\/main>/i);
+  if (mainMatch) return stripTags(mainMatch[0]);
+  const ps = html.match(/<p[\s\S]*?<\/p>/gi);
+  if (ps && ps.length > 3) return stripTags(ps.join(' '));
+  return stripTags(html);
+}
+
 // ===== Classificação de facetas acadêmicas =====
 function normalizeForMatch(s: string): string {
   return (s || '')
@@ -474,16 +543,62 @@ Deno.serve(async (req) => {
 
     console.log(`📊 Artigos únicos após deduplicação: ${uniqueArticles.length}`);
 
-    // Inserir artigos no banco de dados
+    // Inserir artigos no banco de dados (com tradução e resumo estendido quando possível)
     console.log('\n💾 Salvando artigos no banco de dados...');
     for (const article of uniqueArticles) {
       const c = classifyArticle(article.title, article.description);
+      let title_pt: string | undefined;
+      let description_pt: string | undefined;
+      let translation_provider: string | undefined;
+      let extended_summary_pt: string | undefined;
+
+      const maybeEnglish = isLikelyEnglish(`${article.title} ${article.description || ''}`);
+      if (maybeEnglish) {
+        const tTitle = await translateTextToPt(article.title);
+        if (tTitle) {
+          title_pt = tTitle.translated;
+          translation_provider = tTitle.provider;
+        }
+        if (article.description) {
+          const tDesc = await translateTextToPt(article.description);
+          if (tDesc) {
+            description_pt = tDesc.translated;
+            translation_provider = tDesc.provider;
+          }
+        }
+      }
+
+      // Resumo estendido: só tenta quando o resumo é curto ou é inglês
+      try {
+        const needsExtended = maybeEnglish || !article.description || (article.description?.length || 0) < 280;
+        if (needsExtended && await checkRobotsTxt(article.url)) {
+          const pageRes = await fetchWithRetry(article.url, { headers: { 'User-Agent': 'ReconNews-Bot/1.0' } }, 2, 12000, 2000);
+          if (pageRes.ok) {
+            const html = await pageRes.text();
+            let content = extractMainContent(html).substring(0, 6000);
+            if (content && maybeEnglish) {
+              const tFull = await translateTextToPt(content);
+              if (tFull) {
+                extended_summary_pt = tFull.translated;
+                translation_provider = tFull.provider;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.log('⚠️ Falha ao obter resumo estendido:', err?.message || err);
+      }
+
       const { error } = await supabase
         .from('articles')
         .upsert(
           {
             title: article.title,
             description: article.description,
+            title_pt,
+            description_pt,
+            translation_provider,
+            extended_summary_pt,
             url: article.url,
             source: article.source,
             published_at: article.published_at,

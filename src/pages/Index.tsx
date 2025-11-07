@@ -24,6 +24,7 @@ interface Article {
   description?: string;
   title_pt?: string;
   description_pt?: string;
+  extended_summary_pt?: string;
   translation_provider?: string;
   url: string;
   source: string;
@@ -548,6 +549,7 @@ const Index = () => {
                     description={article.description || undefined}
                     titlePt={article.title_pt || undefined}
                     descriptionPt={article.description_pt || undefined}
+                    fullDescriptionPt={article.extended_summary_pt || undefined}
                     translationProvider={article.translation_provider || undefined}
                     url={article.url}
                     source={article.source}

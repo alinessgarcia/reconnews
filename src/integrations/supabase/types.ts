@@ -19,12 +19,16 @@ export type Database = {
           category: string | null
           created_at: string | null
           description: string | null
+          description_pt: string | null
           id: string
           image_url: string | null
           published_at: string | null
           scraped_at: string | null
           source: string
           title: string
+          title_pt: string | null
+          translation_provider: string | null
+          extended_summary_pt: string | null
           url: string
           // Novas colunas de facetas acadêmicas
           region: string | null
@@ -35,12 +39,16 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           description?: string | null
+          description_pt?: string | null
           id?: string
           image_url?: string | null
           published_at?: string | null
           scraped_at?: string | null
           source: string
           title: string
+          title_pt?: string | null
+          translation_provider?: string | null
+          extended_summary_pt?: string | null
           url: string
           // Novas colunas de facetas acadêmicas
           region?: string | null
@@ -51,12 +59,16 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           description?: string | null
+          description_pt?: string | null
           id?: string
           image_url?: string | null
           published_at?: string | null
           scraped_at?: string | null
           source?: string
           title?: string
+          title_pt?: string | null
+          translation_provider?: string | null
+          extended_summary_pt?: string | null
           url?: string
           // Novas colunas de facetas acadêmicas
           region?: string | null

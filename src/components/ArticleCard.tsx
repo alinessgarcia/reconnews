@@ -12,6 +12,8 @@ interface ArticleCardProps {
   description?: string;
   titlePt?: string;
   descriptionPt?: string;
+  fullDescription?: string;
+  fullDescriptionPt?: string;
   translationProvider?: string;
   url: string;
   source: string;
@@ -25,6 +27,8 @@ export const ArticleCard = ({
   description,
   titlePt,
   descriptionPt,
+  fullDescription,
+  fullDescriptionPt,
   translationProvider,
   url,
   source,
@@ -41,6 +45,11 @@ export const ArticleCard = ({
   const sanitized = sanitizeSummary(rawDescription);
   // Fallback: se a sanitização remover tudo, use o texto bruto para não ficar sem resumo
   const displayDescription = sanitized && sanitized.length > 0 ? sanitized : (rawDescription || undefined);
+
+  // Conteúdo completo do popup (preferir versão traduzida e estendida)
+  const rawFull = fullDescriptionPt || fullDescription || rawDescription;
+  const sanitizedFull = sanitizeSummary(rawFull);
+  const displayFull = sanitizedFull && sanitizedFull.length > 0 ? sanitizedFull : (rawFull || undefined);
   
   // Usa proxy público para evitar bloqueios de hotlink sem usar Storage
   const proxiedImage = imageUrl ? toProxyImage(imageUrl, { width: 800, height: 450, fit: 'cover', output: 'webp', dpr: 2 }) : undefined;
@@ -100,7 +109,7 @@ export const ArticleCard = ({
             <Badge variant="outline" className="text-xs font-medium border-primary/30 text-primary">
               {source}
             </Badge>
-            {(titlePt || descriptionPt) && (
+            {(titlePt || descriptionPt || fullDescriptionPt) && (
               <Badge className="bg-green-600 text-white text-[10px] border-0" title={translationProvider ? `Traduzido automaticamente via ${translationProvider}` : "Traduzido automaticamente"}>
                 Traduzido
               </Badge>
@@ -142,9 +151,9 @@ export const ArticleCard = ({
                   className="w-full h-auto rounded-md"
                 />
               )}
-              {displayDescription ? (
+              {displayFull ? (
                 <p className="text-sm text-foreground leading-relaxed">
-                  {displayDescription}
+                  {displayFull}
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground">
@@ -198,9 +207,9 @@ export const ArticleCard = ({
                       className="w-full h-auto rounded-md"
                     />
                   )}
-                  {displayDescription ? (
+                  {displayFull ? (
                     <p className="text-sm text-foreground leading-relaxed">
-                      {displayDescription}
+                      {displayFull}
                     </p>
                   ) : (
                     <p className="text-sm text-muted-foreground">
