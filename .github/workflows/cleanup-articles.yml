@@ -1,0 +1,45 @@
+name: Cleanup Old Articles (RPC)
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: cleanup-articles
+  cancel-in-progress: true
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Call cleanup_old_articles RPC
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
+            echo "Missing required secrets SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"; exit 1;
+          fi
+          RESPONSE=$(curl -sS -X POST "${SUPABASE_URL}/rest/v1/rpc/cleanup_old_articles" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            -w " HTTP_STATUS:%{http_code}")
+          STATUS=$(echo "$RESPONSE" | sed -e 's/.*HTTP_STATUS://')
+          BODY=$(echo "$RESPONSE" | sed -e 's/ HTTP_STATUS:.*//')
+          echo "HTTP status: ${STATUS}"
+          if [ "${STATUS}" -ge 200 ] && [ "${STATUS}" -lt 300 ]; then
+            echo "Cleanup RPC executed successfully."
+            if [ -n "${BODY}" ] && [ "${BODY}" != "null" ]; then
+              echo "Response body present."
+            fi
+          else
+            echo "Cleanup RPC failed. Status: ${STATUS}"
+            exit 1
+          fi
