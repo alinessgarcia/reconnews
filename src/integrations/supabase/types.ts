@@ -84,7 +84,7 @@ export type Database = {
     Functions: {
       cleanup_old_articles: {
         Args: Record<PropertyKey, never>
-        Returns: undefined
+        Returns: number
       }
     }
     Enums: {
