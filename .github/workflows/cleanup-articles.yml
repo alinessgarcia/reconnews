@@ -25,21 +25,27 @@ jobs:
           if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
             echo "Missing required secrets SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"; exit 1;
           fi
+
+          # Chamada com captura completa do body e do status para debug
           RESPONSE=$(curl -sS -X POST "${SUPABASE_URL}/rest/v1/rpc/cleanup_old_articles" \
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Content-Type: application/json" \
             -d '{}' \
-            -w " HTTP_STATUS:%{http_code}")
-          STATUS=$(echo "$RESPONSE" | sed -e 's/.*HTTP_STATUS://')
-          BODY=$(echo "$RESPONSE" | sed -e 's/ HTTP_STATUS:.*//')
+            -w $'\nHTTP_STATUS:%{http_code}')
+
+          STATUS=$(echo "$RESPONSE" | sed -n 's/.*HTTP_STATUS:\([0-9]\+\)/\1/p' || true)
+          BODY=$(echo "$RESPONSE" | sed -e 's/\nHTTP_STATUS:.*//')
+
           echo "HTTP status: ${STATUS}"
-          if [ "${STATUS}" -ge 200 ] && [ "${STATUS}" -lt 300 ]; then
+          echo "Response body:"
+          printf '%s\n' "$BODY"
+
+          if [ "${STATUS:-0}" -ge 200 ] && [ "${STATUS:-0}" -lt 300 ]; then
             echo "Cleanup RPC executed successfully."
-            if [ -n "${BODY}" ] && [ "${BODY}" != "null" ]; then
-              echo "Response body present."
-            fi
           else
             echo "Cleanup RPC failed. Status: ${STATUS}"
+            echo "Full raw response:"
+            printf '%s\n' "$RESPONSE"
             exit 1
           fi
