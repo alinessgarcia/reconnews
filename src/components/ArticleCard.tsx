@@ -96,7 +96,7 @@ export const ArticleCard = ({
           ) : (
             <img src="/placeholder.svg" alt="Imagem indisponível" className="h-full w-full object-cover" />
           )}
-          {category && (
+          {category && !new Set(['Portal Evangélico', 'Notícias Evangélicas']).has(category) && (
             <div className="absolute top-3 left-3">
               <Badge className={`${getCategoryColor(category)} text-white border-0 shadow-lg`}>
                 {category}

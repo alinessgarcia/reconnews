@@ -177,12 +177,16 @@ const Index = () => {
 
   // Listas derivadas para filtros simples
   const sources = useMemo(() => Array.from(new Set(articles.map(a => a.source))), [articles]);
-  const categories = useMemo(() => Array.from(new Set(articles.map(a => a.category).filter(Boolean))) as string[], [articles]);
+  const categories = useMemo(() => {
+    const hidden = new Set(['Portal Evangélico', 'Notícias Evangélicas']);
+    return Array.from(new Set(articles.map(a => a.category).filter((c): c is string => !!c && !hidden.has(c))));
+  }, [articles]);
   const categoryCounts = useMemo(() => {
+    const hidden = new Set(['Portal Evangélico', 'Notícias Evangélicas']);
     const counts: Record<string, number> = {};
     for (const a of articles) {
       const cat = a.category || undefined;
-      if (cat) counts[cat] = (counts[cat] || 0) + 1;
+      if (cat && !hidden.has(cat)) counts[cat] = (counts[cat] || 0) + 1;
     }
     counts['all'] = articles.length;
     return counts;

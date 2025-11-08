@@ -362,97 +362,83 @@ async function scrapeGoogleNews(query: string, category: string): Promise<Articl
   return parseRSSFeed(url, 'Google News', category);
 }
 
-// Fontes RSS de portais evangélicos, cristãos, arqueologia e história
+// Fontes RSS focadas em Arqueologia, Manuscritos e História Bíblica
 const RSS_FEEDS = [
-  // Portais Evangélicos e Cristãos
-  {
-    url: 'https://noticias.gospelmais.com.br/feed',
-    source: 'Gospel+',
-    category: 'Notícias Gospel',
-  },
-  {
-    url: 'https://voltemosaoevangelho.com/blog/feed/',
-    source: 'Voltemos ao Evangelho',
-    category: 'Teologia Reformada',
-  },
-  {
-    url: 'https://pleno.news/feed',
-    source: 'Pleno News',
-    category: 'Notícias Evangélicas',
-  },
-  {
-    url: 'https://comunhao.com.br/feed',
-    source: 'Comunhão',
-    category: 'Portal Evangélico',
-  },
-  
-  // Arqueologia e História
-  {
-    url: 'http://www.bbc.co.uk/portuguese/index.xml',
-    source: 'BBC Brasil',
-    category: 'Ciência e Arqueologia',
-  },
-  {
-    url: 'https://masp.org.br/feed',
-    source: 'MASP',
-    category: 'Arte e Arqueologia',
-  },
-  {
-    url: 'https://arqueologia-iab.com.br/blog-de-noticias/feed',
-    source: 'Instituto de Arqueologia Brasileira',
-    category: 'Arqueologia de Jerusalém',
-  },
-  {
-    url: 'https://incrivelhistoria.com.br/feed',
-    source: 'Incrível História',
-    category: 'História Cristã',
-  },
-  {
-    url: 'http://agencia.fapesp.br/rss/',
-    source: 'Agência FAPESP',
-    category: 'Ciência e Pesquisa',
-  },
-  {
-    url: 'https://www.nexojornal.com.br/rss.xml',
-    source: 'Nexo Jornal',
-    category: 'Análises e Ciência',
-  },
-  {
-    url: 'https://feeds.folha.uol.com.br/ciencia/rss091.xml',
-    source: 'Folha de S.Paulo - Ciência',
-    category: 'Ciência',
-  },
-  
-  // Arqueologia Bíblica Internacional
+  // Arqueologia Bíblica e Manuscritos
   {
     url: 'https://www.biblicalarchaeology.org/feed',
     source: 'Biblical Archaeology Society',
-    category: 'Evidências Bíblicas',
+    category: 'Arqueologia Bíblica',
   },
   {
-    url: 'https://pt.christianitytoday.com/feed',
-    source: 'Christianity Today Brasil',
-    category: 'Apologética',
+    url: 'https://asorblog.org/feed/',
+    source: 'ASOR Blog',
+    category: 'Arqueologia do Oriente Próximo',
+  },
+  // Portais amplos de arqueologia
+  {
+    url: 'https://www.heritagedaily.com/feed',
+    source: 'HeritageDaily',
+    category: 'Descobertas Arqueológicas',
+  },
+  {
+    url: 'https://arkeonews.net/feed/',
+    source: 'ArkeoNews',
+    category: 'Descobertas Arqueológicas',
+  },
+  {
+    url: 'https://popular-archaeology.com/feed/',
+    source: 'Popular Archaeology',
+    category: 'Descobertas Arqueológicas',
+  },
+  {
+    url: 'https://www.ancient-origins.net/rss.xml',
+    source: 'Ancient Origins',
+    category: 'História Antiga',
+  },
+  // Agregadores de ciência com seção de arqueologia
+  {
+    url: 'https://www.sciencedaily.com/rss/archaeology.xml',
+    source: 'ScienceDaily – Archaeology',
+    category: 'Achados Científicos',
+  },
+  {
+    url: 'https://www.sciencedaily.com/rss/fossils_ruins.xml',
+    source: 'ScienceDaily – Fossils & Ruins',
+    category: 'Achados Científicos',
+  },
+  {
+    url: 'https://phys.org/rss-feed/archaeology-fossils/',
+    source: 'Phys.org – Archaeology & Fossils',
+    category: 'Achados Científicos',
+  },
+  // Mídia internacional com seção dedicada
+  {
+    url: 'https://www.theguardian.com/science/archaeology/rss',
+    source: 'The Guardian – Archaeology',
+    category: 'Arqueologia',
   },
 ];
 
-// Política editorial: permitir apenas fontes alinhadas ao conservadorismo e à comunidade evangélica
+// Política editorial: permitir apenas fontes focadas em arqueologia, manuscritos e história bíblica
 // Você pode personalizar via variáveis de ambiente RECON_ALLOWED_SOURCES (nomes) e RECON_BLOCKED_HOSTS (domínios)
 const FEEDS_ALLOWLIST = new Set(
   (Deno.env.get('RECON_ALLOWED_SOURCES')?.split(',').map(s => s.trim()).filter(Boolean)) ?? [
-    'Gospel+',
-    'Voltemos ao Evangelho',
-    'Pleno News',
-    'Comunhão',
     'Biblical Archaeology Society',
-    'Christianity Today Brasil',
+    'ASOR Blog',
+    'HeritageDaily',
+    'ArkeoNews',
+    'Popular Archaeology',
+    'Ancient Origins',
+    'ScienceDaily – Archaeology',
+    'ScienceDaily – Fossils & Ruins',
+    'Phys.org – Archaeology & Fossils',
+    'The Guardian – Archaeology',
   ]
 );
 
 const BLOCKED_HOSTS = new Set(
-  (Deno.env.get('RECON_BLOCKED_HOSTS')?.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)) ?? [
-    'bbc.co.uk', 'bbc.com', 'nexojornal.com.br', 'folha.uol.com.br', 'agencia.fapesp.br', 'masp.org.br', 'incrivelhistoria.com.br', 'arqueologia-iab.com.br'
-  ]
+  (Deno.env.get('RECON_BLOCKED_HOSTS')?.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)) ?? []
 );
 
 Deno.serve(async (req) => {
@@ -485,18 +471,24 @@ Deno.serve(async (req) => {
     console.log('🔍 Buscando no Google News...');
     
     const queries = [
+      // Núcleo do tema
       { term: 'arqueologia bíblica', category: 'Arqueologia Bíblica' },
-      { term: 'descoberta arqueológica Israel Terra Santa', category: 'Descobertas Arqueológicas' },
-      { term: 'manuscritos antigos bíblia', category: 'Manuscritos Bíblicos' },
-      { term: 'Mar Morto descoberta arqueológica', category: 'Manuscritos do Mar Morto' },
-      { term: 'teologia reformada', category: 'Teologia Reformada' },
-      { term: 'história cristianismo primitivo', category: 'História Cristã' },
-      { term: 'apologética cristã', category: 'Apologética' },
-      { term: 'evidências históricas bíblia', category: 'Evidências Bíblicas' },
-      { term: 'descoberta científica comprova bíblia', category: 'Ciência e Fé' },
-      { term: 'arqueologia Jerusalém templo', category: 'Arqueologia de Jerusalém' },
-      { term: 'perseguição cristãos', category: 'Perseguição Religiosa' },
-      { term: 'igreja evangélica Brasil notícias', category: 'Igreja Evangélica' },
+      { term: 'descoberta arqueológica Israel', category: 'Descobertas Arqueológicas' },
+      { term: 'manuscritos antigos bíblia', category: 'Manuscritos e Documentos' },
+      { term: 'Mar Morto manuscritos descoberta', category: 'Manuscritos e Documentos' },
+      // Cidades e sítios arqueológicos relevantes
+      { term: 'escavações Jerusalém Cidade de David', category: 'Arqueologia de Jerusalém' },
+      { term: 'Tel Hazor escavações', category: 'Cidades e Personagens Bíblicos' },
+      { term: 'Tel Lachish escavações', category: 'Cidades e Personagens Bíblicos' },
+      { term: 'Tel Dan estela descoberta', category: 'Cidades e Personagens Bíblicos' },
+      { term: 'Masada descoberta arqueológica', category: 'Cidades e Personagens Bíblicos' },
+      // Inscrições e documentos
+      { term: 'inscrições hebraico aramaico bíblia achado', category: 'Manuscritos e Documentos' },
+      { term: 'papiros bíblicos pergaminhos descoberta', category: 'Manuscritos e Documentos' },
+      // Pesquisadores e estudos
+      { term: 'Israel Finkelstein arqueologia bíblica', category: 'Pesquisadores Renomados' },
+      { term: 'William Dever arqueologia bíblica', category: 'Pesquisadores Renomados' },
+      { term: 'Yigael Yadin descoberta arqueológica', category: 'Pesquisadores Renomados' },
     ];
 
     for (const { term, category } of queries) {
