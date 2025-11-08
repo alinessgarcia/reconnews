@@ -10,6 +10,8 @@ import { CollectingBar } from "@/components/CollectingBar";
 const Admin = () => {
   const [isCollecting, setIsCollecting] = useState(false);
   const [collectProgress, setCollectProgress] = useState(0);
+  const [isCleaning, setIsCleaning] = useState(false);
+  const [isDbCleanupRunning, setIsDbCleanupRunning] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -76,6 +78,69 @@ const Admin = () => {
     navigate("/");
   };
 
+  const handleCleanupCategories = async () => {
+    if (isCleaning) return;
+    setIsCleaning(true);
+    try {
+      const hiddenCategories = ['Portal Evangélico', 'Notícias Evangélicas'];
+      const { error } = await supabase
+        .from('articles')
+        .delete()
+        .in('category', hiddenCategories);
+
+      if (error) {
+        toast({
+          title: 'Erro na limpeza',
+          description: 'Não foi possível remover artigos dessas categorias. Verifique permissões/RLS.',
+          variant: 'destructive',
+        });
+        setIsCleaning(false);
+        return;
+      }
+
+      toast({
+        title: 'Limpeza concluída',
+        description: 'Artigos com “Portal Evangélico” e “Notícias Evangélicas” foram removidos.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Erro na limpeza',
+        description: 'Ocorreu um erro inesperado ao limpar as categorias.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCleaning(false);
+    }
+  };
+
+  const handleRunDbCleanupRpc = async () => {
+    if (isDbCleanupRunning) return;
+    setIsDbCleanupRunning(true);
+    try {
+      const { data, error } = await supabase.rpc('cleanup_old_articles');
+      if (error) {
+        toast({
+          title: 'Erro ao executar limpeza programática',
+          description: 'A função cleanup_old_articles falhou. Verifique permissões/RLS.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Limpeza programática iniciada',
+          description: typeof data === 'string' ? data : 'Verifique logs para detalhes.',
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Erro ao executar limpeza programática',
+        description: 'Ocorreu um erro inesperado ao chamar a função RPC.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDbCleanupRunning(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <CollectingBar progress={collectProgress} isCollecting={isCollecting} />
@@ -136,6 +201,36 @@ const Admin = () => {
               <div className="flex justify-between py-2">
                 <span className="text-muted-foreground">Categorias:</span>
                 <span className="font-medium">12 especializadas</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Limpeza de Categorias</CardTitle>
+              <CardDescription>Remover artigos das categorias indesejadas</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={handleCleanupCategories} disabled={isCleaning} variant="destructive" className="gap-2">
+                {isCleaning ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Newspaper className="h-4 w-4" />
+                )}
+                Remover “Portal Evangélico” e “Notícias Evangélicas”
+              </Button>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Dica: se houver restrições de política (RLS), execute a limpeza via workflow ou com a role de serviço.
+              </p>
+              <div className="mt-4">
+                <Button onClick={handleRunDbCleanupRpc} disabled={isDbCleanupRunning} className="gap-2" variant="secondary">
+                  {isDbCleanupRunning ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Newspaper className="h-4 w-4" />
+                  )}
+                  Executar cleanup_old_articles (RPC)
+                </Button>
               </div>
             </CardContent>
           </Card>
