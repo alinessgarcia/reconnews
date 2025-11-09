@@ -545,7 +545,8 @@ Deno.serve(async (req) => {
       let extended_summary_pt: string | undefined;
 
       const maybeEnglish = isLikelyEnglish(`${article.title} ${article.description || ''}`);
-      if (maybeEnglish) {
+      // Traduzir sempre título e descrição quando há provedor configurado (sem depender da heurística)
+      {
         const tTitle = await translateTextToPt(article.title);
         if (tTitle) {
           title_pt = tTitle.translated;

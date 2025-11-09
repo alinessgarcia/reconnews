@@ -1,8 +1,8 @@
-name: Deploy Edge Functions (scrape-news)
+name: Deploy Edge Functions (scrape-news + retranslate-articles)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feat/archaeology-focus ]
     paths:
       - 'supabase/functions/**'
       - '.github/workflows/deploy-edge-functions.yml'
@@ -48,3 +48,5 @@ jobs:
 
       - name: Deploy scrape-news
         run: supabase functions deploy scrape-news
+      - name: Deploy retranslate-articles
+        run: supabase functions deploy retranslate-articles
