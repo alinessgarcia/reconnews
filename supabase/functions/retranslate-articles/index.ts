@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
           const pageRes = await fetchWithRetry(a.url, { headers: { 'User-Agent': 'ReconNews-Bot/1.0' } }, 2, 12000, 2000);
           if (pageRes.ok) {
             const html = await pageRes.text();
-            let content = extractMainContent(html).substring(0, 6000);
+            let content = extractMainContent(html).substring(0, 8000);
             if (content) {
               const t = await translateTextToPt(content);
               if (t) {
