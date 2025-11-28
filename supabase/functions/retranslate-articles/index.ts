@@ -121,7 +121,13 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const limit = Math.max(1, Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 200));
+    let limit = Math.max(1, Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 200));
+    try {
+      const body = await req.json();
+      if (body && typeof body.limit === 'number') {
+        limit = Math.max(1, Math.min(parseInt(String(body.limit), 10) || limit, 200));
+      }
+    } catch {}
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? Deno.env.get('PROJECT_URL') ?? Deno.env.get('RECON_SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY') ?? Deno.env.get('RECON_SERVICE_ROLE_KEY')!;

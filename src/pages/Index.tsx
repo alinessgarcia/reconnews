@@ -54,7 +54,7 @@ const Index = () => {
   const [collectProgress, setCollectProgress] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   // Modo de tradução global: auto (usa PT se disponível), pt (força PT-BR), original (força idioma original)
-  const [translationMode, setTranslationMode] = useState<"auto" | "pt" | "original">("auto");
+  const [translationMode, setTranslationMode] = useState<"auto" | "pt" | "original">("pt");
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
@@ -66,6 +66,7 @@ const Index = () => {
       let query = supabase
         .from("articles")
         .select("*")
+        .order("published_at", { ascending: false })
         .order("scraped_at", { ascending: false })
         .limit(200);
 
@@ -567,6 +568,34 @@ const Index = () => {
                 {isCollecting && (
                   <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
                 )}
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={loading}
+                className="gap-2 shadow-lg"
+                onClick={async () => {
+                  try {
+                    const { data, error } = await supabase.functions.invoke('retranslate-articles', {
+                      body: { limit: 100 }
+                    });
+                    if (error) throw error;
+                    await fetchArticles();
+                    toast({
+                      title: "Retradução executada",
+                      description: `Processados ${data?.processed ?? 0}, atualizados ${data?.updated ?? 0}`,
+                    });
+                  } catch (err) {
+                    console.error('Erro na retranslação:', err);
+                    toast({
+                      title: "Erro",
+                      description: "Não foi possível reprocessar traduções agora.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
+                Retraduzir
               </Button>
             </div>
           </div>
