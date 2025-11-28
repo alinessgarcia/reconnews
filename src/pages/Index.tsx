@@ -5,7 +5,6 @@ import { ArticleCard } from "@/components/ArticleCard";
 // StatsBar removido conforme solicitação: dados visíveis não relevantes ao público
 import { SearchBar } from "@/components/SearchBar";
 import { Pagination } from "@/components/Pagination";
-import { CollectingBar } from "@/components/CollectingBar";
 import { Newspaper, RefreshCw, Filter, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
@@ -50,9 +49,9 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [isCollecting, setIsCollecting] = useState(false);
-  const [collectProgress, setCollectProgress] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Modo de tradução global: auto (usa PT se disponível), pt (força PT-BR), original (força idioma original)
+  const [translationMode, setTranslationMode] = useState<"auto" | "pt" | "original">("pt");
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
@@ -64,6 +63,7 @@ const Index = () => {
       let query = supabase
         .from("articles")
         .select("*")
+        .order("published_at", { ascending: false })
         .order("scraped_at", { ascending: false })
         .limit(200);
 
@@ -102,75 +102,7 @@ const Index = () => {
     setCurrentPage(1);
   }, [selectedRegion, selectedEvidence, selectedTheme]);
 
-  const triggerCollectAnimation = async () => {
-    if (isCollecting) return;
-    
-    setIsCollecting(true);
-    setCollectProgress(0);
-
-    try {
-      // Animação da barra de progresso
-      const interval = setInterval(() => {
-        setCollectProgress(prev => {
-          if (prev >= 95) {
-            return 95; // Para em 95% até a função terminar
-          }
-          return prev + 2;
-        });
-      }, 50);
-
-      // Invocar a função de scraping
-      const { data, error } = await supabase.functions.invoke('scrape-news', {
-        body: { manual: true }
-      });
-
-      clearInterval(interval);
-      
-      if (error) {
-        console.error('Erro ao coletar notícias:', error);
-        toast({
-          title: "Erro na coleta",
-          description: "Não foi possível coletar as notícias. Tente novamente.",
-          variant: "destructive",
-        });
-        setIsCollecting(false);
-        setCollectProgress(0);
-        return;
-      }
-
-      setCollectProgress(100);
-
-      // Aguardar um pouco e recarregar os artigos
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await fetchArticles();
-
-      const processed = data?.uniqueArticles ?? 0;
-      const inserted = data?.newArticles ?? 0;
-      const msgBase = processed > 0
-        ? `${processed} artigos foram verificados e atualizados.`
-        : `As fontes foram verificadas. Obrigado por cooperar!`;
-      const msgNew = inserted > 0 ? ` (${inserted} novos)` : "";
-      toast({
-        title: "Obrigado por cooperar!",
-        description: `${msgBase}${msgNew}`,
-      });
-      
-      // Reset após mostrar 100%
-      setTimeout(() => {
-        setIsCollecting(false);
-        setCollectProgress(0);
-      }, 1000);
-    } catch (err) {
-      console.error('Erro na coleta:', err);
-      toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao coletar notícias.",
-        variant: "destructive",
-      });
-      setIsCollecting(false);
-      setCollectProgress(0);
-    }
-  };
+  // Coletas e retranslações são 100% automatizadas via GitHub Actions; UI não oferece ações manuais.
 
   // Contagens para filtros acadêmicos
   const academicCounts = useMemo(() => facetCounts(articles), [articles]);
@@ -236,9 +168,293 @@ const Index = () => {
     return filteredArticles.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredArticles, currentPage]);
 
+  // Verifica se há alguma tradução disponível nos artigos filtrados
+  const hasAnyTranslation = useMemo(() => {
+    return filteredArticles.some(
+      (a) => !!(a.title_pt || a.description_pt || a.extended_summary_pt)
+    );
+  }, [filteredArticles]);
+
+  // Componentes auxiliares de filtros para mobile e desktop
+  const MobileFilters = () => (
+    <div className="flex items-center gap-2">
+      {/* Toggle de tradução (global) */}
+      <div className="hidden sm:flex items-center gap-1">
+        <span className="text-xs text-muted-foreground">Idioma:</span>
+        <div className="flex rounded-md border border-border overflow-hidden">
+          <button
+            className={`px-2 py-1 text-xs ${translationMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+            onClick={() => setTranslationMode('auto')}
+          >Auto</button>
+          <button
+            className={`px-2 py-1 text-xs ${translationMode === 'pt' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${!hasAnyTranslation ? 'opacity-50 cursor-not-allowed' : ''}`}
+            onClick={() => hasAnyTranslation && setTranslationMode('pt')}
+            disabled={!hasAnyTranslation}
+            title={hasAnyTranslation ? 'Mostrar tradução' : 'Tradução indisponível'}
+          >PT-BR</button>
+          <button
+            className={`px-2 py-1 text-xs ${translationMode === 'original' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+            onClick={() => setTranslationMode('original')}
+          >Original</button>
+        </div>
+      </div>
+      <Drawer>
+        <DrawerTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-1">
+            <Filter className="h-4 w-4" />
+            Filtros
+          </Button>
+        </DrawerTrigger>
+        <DrawerContent className="p-4">
+          <DrawerHeader>
+            <DrawerTitle>Filtros</DrawerTitle>
+          </DrawerHeader>
+          <div className="space-y-4">
+            <SearchBar value={searchQuery} onChange={setSearchQuery} />
+            {/* Toggle de tradução dentro do Drawer (mobile) */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Idioma:</span>
+              <div className="flex rounded-md border border-border overflow-hidden">
+                <button
+                  className={`px-2 py-1 text-xs ${translationMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                  onClick={() => setTranslationMode('auto')}
+                >Auto</button>
+                <button
+                  className={`px-2 py-1 text-xs ${translationMode === 'pt' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${!hasAnyTranslation ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={() => hasAnyTranslation && setTranslationMode('pt')}
+                  disabled={!hasAnyTranslation}
+                  title={hasAnyTranslation ? 'Mostrar tradução' : 'Tradução indisponível'}
+                >PT-BR</button>
+                <button
+                  className={`px-2 py-1 text-xs ${translationMode === 'original' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                  onClick={() => setTranslationMode('original')}
+                >Original</button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              {/* Fonte */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Fonte</label>
+                <Select value={selectedSource ?? "__all__"} onValueChange={(v) => setSelectedSource(v === "__all__" ? null : v)}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Selecione a fonte" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todas</SelectItem>
+                    {sources.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Categoria */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Categoria</label>
+                <Select value={selectedCategory ?? "__all__"} onValueChange={(v) => setSelectedCategory(v === "__all__" ? null : v)}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Selecione a categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todas</SelectItem>
+                    {categories.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Taxonomia Acadêmica */}
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Região/Civilizações</label>
+                  <Select value={selectedRegion ?? "__all__"} onValueChange={(v) => setSelectedRegion(v === "__all__" ? null : v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Todas</SelectItem>
+                      {REGIONS_CIVILIZATIONS.map((r) => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Tipo de Evidência</label>
+                  <Select value={selectedEvidence ?? "__all__"} onValueChange={(v) => setSelectedEvidence(v === "__all__" ? null : v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Todas</SelectItem>
+                      {EVIDENCE_TYPES.map((e) => (
+                        <SelectItem key={e} value={e}>{e}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Tema</label>
+                  <Select value={selectedTheme ?? "__all__"} onValueChange={(v) => setSelectedTheme(v === "__all__" ? null : v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Todos</SelectItem>
+                      {THEMES.map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DrawerFooter className="mt-4">
+            <div className="flex items-center justify-between">
+              <Button variant="outline" size="sm" onClick={() => {
+                setSelectedSource(null);
+                setSelectedCategory(null);
+                setSelectedRegion(null);
+                setSelectedEvidence(null);
+                setSelectedTheme(null);
+                setSearchQuery("");
+              }}>Limpar filtros</Button>
+              <DrawerClose asChild>
+                <Button size="sm" className="gap-1">
+                  Aplicar
+                </Button>
+              </DrawerClose>
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    </div>
+  );
+
+  const DesktopFilters = () => (
+    <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+      <div className="flex items-center gap-2">
+        {/* Toggle de tradução (global) */}
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-muted-foreground">Idioma:</span>
+          <div className="flex rounded-md border border-border overflow-hidden">
+            <button
+              className={`px-2 py-1 text-xs ${translationMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+              onClick={() => setTranslationMode('auto')}
+            >Auto</button>
+            <button
+              className={`px-2 py-1 text-xs ${translationMode === 'pt' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${!hasAnyTranslation ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={() => hasAnyTranslation && setTranslationMode('pt')}
+              disabled={!hasAnyTranslation}
+              title={hasAnyTranslation ? 'Mostrar tradução' : 'Tradução indisponível'}
+            >PT-BR</button>
+            <button
+              className={`px-2 py-1 text-xs ${translationMode === 'original' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+              onClick={() => setTranslationMode('original')}
+            >Original</button>
+          </div>
+        </div>
+        <Button variant="outline" size="default" className="gap-1" onClick={() => setFiltersOpen(!filtersOpen)}>
+          <Filter className="h-4 w-4" />
+          Filtros
+          {filtersOpen ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+      <CollapsibleContent className="mt-4 grid grid-cols-3 gap-4">
+        <div className="col-span-3">
+          <SearchBar value={searchQuery} onChange={setSearchQuery} />
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-muted-foreground">Fonte</label>
+          <Select value={selectedSource ?? "__all__"} onValueChange={(v) => setSelectedSource(v === "__all__" ? null : v)}>
+            <SelectTrigger className="h-10 text-sm">
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas</SelectItem>
+              {sources.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-muted-foreground">Categoria</label>
+          <Select value={selectedCategory ?? "__all__"} onValueChange={(v) => setSelectedCategory(v === "__all__" ? null : v)}>
+            <SelectTrigger className="h-10 text-sm">
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-muted-foreground">Região/Civilizações</label>
+          <Select value={selectedRegion ?? "__all__"} onValueChange={(v) => setSelectedRegion(v === "__all__" ? null : v)}>
+            <SelectTrigger className="h-10 text-sm">
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas</SelectItem>
+              {REGIONS_CIVILIZATIONS.map((r) => (
+                <SelectItem key={r} value={r}>{r}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-muted-foreground">Tipo de Evidência</label>
+          <Select value={selectedEvidence ?? "__all__"} onValueChange={(v) => setSelectedEvidence(v === "__all__" ? null : v)}>
+            <SelectTrigger className="h-10 text-sm">
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas</SelectItem>
+              {EVIDENCE_TYPES.map((e) => (
+                <SelectItem key={e} value={e}>{e}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-muted-foreground">Tema</label>
+          <Select value={selectedTheme ?? "__all__"} onValueChange={(v) => setSelectedTheme(v === "__all__" ? null : v)}>
+            <SelectTrigger className="h-10 text-sm">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos</SelectItem>
+              {THEMES.map((t) => (
+                <SelectItem key={t} value={t}>{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="col-span-3 flex items-center justify-start gap-2">
+          <Button variant="outline" size="default" onClick={() => {
+            setSelectedSource(null);
+            setSelectedCategory(null);
+            setSelectedRegion(null);
+            setSelectedEvidence(null);
+            setSelectedTheme(null);
+            setSearchQuery("");
+          }}>Limpar filtros</Button>
+          <Button size="default" onClick={() => setFiltersOpen(false)}>Aplicar</Button>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+
   return (
     <div className="min-h-screen bg-background">
-      <CollectingBar progress={collectProgress} isCollecting={isCollecting} />
       
       {/* Hero Section */}
       <header className="relative overflow-hidden bg-gradient-to-r from-primary via-primary/90 to-accent text-primary-foreground py-20 px-4">
@@ -257,31 +473,7 @@ const Index = () => {
                 {/* Removido texto sobre horários/frequência de atualização conforme solicitação */}
               </div>
             </div>
-            <div className="flex gap-3">
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={fetchArticles}
-                disabled={loading}
-                className="gap-2 shadow-lg"
-              >
-                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                Atualizar
-              </Button>
-              <Button
-                variant="default"
-                size="lg"
-                onClick={triggerCollectAnimation}
-                disabled={loading || isCollecting}
-                className="gap-2 shadow-lg relative overflow-hidden group"
-              >
-                <Newspaper className={`h-4 w-4 ${isCollecting ? "animate-bounce" : ""}`} />
-                Coletar Agora
-                {isCollecting && (
-                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
-                )}
-              </Button>
-            </div>
+            <div className="flex gap-3" />
           </div>
 
           {/* Área de estatísticas removida */}
@@ -293,221 +485,10 @@ const Index = () => {
         <div className="mt-8">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Explorar Notícias</h2>
-            {isMobile ? (
-              <Drawer>
-                <DrawerTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1">
-                    <Filter className="h-4 w-4" />
-                    Filtros
-                  </Button>
-                </DrawerTrigger>
-                <DrawerContent className="p-4">
-                  <DrawerHeader>
-                    <DrawerTitle>Filtros</DrawerTitle>
-                  </DrawerHeader>
-                  <div className="space-y-4">
-                    <SearchBar value={searchQuery} onChange={setSearchQuery} />
-                    <div className="grid grid-cols-1 gap-3">
-                      {/* Fonte */}
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-muted-foreground">Fonte</label>
-                        <Select value={selectedSource ?? "__all__"} onValueChange={(v) => setSelectedSource(v === "__all__" ? null : v)}>
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="Selecione a fonte" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__all__">Todas</SelectItem>
-                            {sources.map((s) => (
-                              <SelectItem key={s} value={s}>{s}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {/* Categoria */}
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-muted-foreground">Categoria</label>
-                        <Select value={selectedCategory ?? "__all__"} onValueChange={(v) => setSelectedCategory(v === "__all__" ? null : v)}>
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="Selecione a categoria" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__all__">Todas</SelectItem>
-                            {categories.map((c) => (
-                              <SelectItem key={c} value={c}>{c}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {/* Taxonomia Acadêmica */}
-                      <div className="grid grid-cols-1 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-muted-foreground">Região/Civilizações</label>
-                          <Select value={selectedRegion ?? "__all__"} onValueChange={(v) => setSelectedRegion(v === "__all__" ? null : v)}>
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Todas" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__all__">Todas</SelectItem>
-                              {REGIONS_CIVILIZATIONS.map((r) => (
-                                <SelectItem key={r} value={r}>{r}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-muted-foreground">Tipo de Evidência</label>
-                          <Select value={selectedEvidence ?? "__all__"} onValueChange={(v) => setSelectedEvidence(v === "__all__" ? null : v)}>
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Todas" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__all__">Todas</SelectItem>
-                              {EVIDENCE_TYPES.map((e) => (
-                                <SelectItem key={e} value={e}>{e}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-muted-foreground">Tema</label>
-                          <Select value={selectedTheme ?? "__all__"} onValueChange={(v) => setSelectedTheme(v === "__all__" ? null : v)}>
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Todos" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__all__">Todos</SelectItem>
-                              {THEMES.map((t) => (
-                                <SelectItem key={t} value={t}>{t}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <DrawerFooter className="mt-4">
-                    <div className="flex items-center justify-between">
-                      <Button variant="outline" size="sm" onClick={() => {
-                        setSelectedSource(null);
-                        setSelectedCategory(null);
-                        setSelectedRegion(null);
-                        setSelectedEvidence(null);
-                        setSelectedTheme(null);
-                        setSearchQuery("");
-                      }}>Limpar filtros</Button>
-                      <DrawerClose asChild>
-                        <Button size="sm" className="gap-1">
-                          Aplicar
-                        </Button>
-                      </DrawerClose>
-                    </div>
-                  </DrawerFooter>
-                </DrawerContent>
-              </Drawer>
-            ) : (
-              <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="default" className="gap-1" onClick={() => setFiltersOpen(!filtersOpen)}>
-                    <Filter className="h-4 w-4" />
-                    Filtros
-                    {filtersOpen ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                <CollapsibleContent className="mt-4 grid grid-cols-3 gap-4">
-                  <div className="col-span-3">
-                    <SearchBar value={searchQuery} onChange={setSearchQuery} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-muted-foreground">Fonte</label>
-                    <Select value={selectedSource ?? "__all__"} onValueChange={(v) => setSelectedSource(v === "__all__" ? null : v)}>
-                      <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Todas" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__all__">Todas</SelectItem>
-                        {sources.map((s) => (
-                          <SelectItem key={s} value={s}>{s}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-muted-foreground">Categoria</label>
-                    <Select value={selectedCategory ?? "__all__"} onValueChange={(v) => setSelectedCategory(v === "__all__" ? null : v)}>
-                      <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Todas" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__all__">Todas</SelectItem>
-                        {categories.map((c) => (
-                          <SelectItem key={c} value={c}>{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-muted-foreground">Região/Civilizações</label>
-                    <Select value={selectedRegion ?? "__all__"} onValueChange={(v) => setSelectedRegion(v === "__all__" ? null : v)}>
-                      <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Todas" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__all__">Todas</SelectItem>
-                        {REGIONS_CIVILIZATIONS.map((r) => (
-                          <SelectItem key={r} value={r}>{r}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-muted-foreground">Tipo de Evidência</label>
-                    <Select value={selectedEvidence ?? "__all__"} onValueChange={(v) => setSelectedEvidence(v === "__all__" ? null : v)}>
-                      <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Todas" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__all__">Todas</SelectItem>
-                        {EVIDENCE_TYPES.map((e) => (
-                          <SelectItem key={e} value={e}>{e}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-muted-foreground">Tema</label>
-                    <Select value={selectedTheme ?? "__all__"} onValueChange={(v) => setSelectedTheme(v === "__all__" ? null : v)}>
-                      <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Todos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__all__">Todos</SelectItem>
-                        {THEMES.map((t) => (
-                          <SelectItem key={t} value={t}>{t}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-3 flex items-center justify-start gap-2">
-                    <Button variant="outline" size="default" onClick={() => {
-                      setSelectedSource(null);
-                      setSelectedCategory(null);
-                      setSelectedRegion(null);
-                      setSelectedEvidence(null);
-                      setSelectedTheme(null);
-                      setSearchQuery("");
-                    }}>Limpar filtros</Button>
-                    <Button size="default" onClick={() => setFiltersOpen(false)}>Aplicar</Button>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
+            {isMobile ? <MobileFilters /> : <DesktopFilters />}
           </div>
 
-          {/* Results header */}
+          
           <div className="flex items-center justify-between mt-4">
             <p className="text-sm text-muted-foreground">
               {filteredArticles.length} resultados
@@ -555,6 +536,7 @@ const Index = () => {
                     descriptionPt={article.description_pt || undefined}
                     fullDescriptionPt={article.extended_summary_pt || undefined}
                     translationProvider={article.translation_provider || undefined}
+                    translationMode={translationMode}
                     url={article.url}
                     source={article.source}
                     publishedAt={article.published_at || undefined}

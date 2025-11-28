@@ -275,6 +275,7 @@ async function parseRSSFeed(url: string, source: string, category: string): Prom
       if (!title || !link || title.length < 10) continue;
 
       const description = extractXMLTag(itemXml, 'description');
+      const contentEncoded = extractXMLTag(itemXml, 'content:encoded');
       const pubDate = extractXMLTag(itemXml, 'pubDate');
       
       // Tentar extrair imagem de múltiplos campos (description, enclosure, media:content, media:thumbnail)
@@ -324,6 +325,7 @@ async function parseRSSFeed(url: string, source: string, category: string): Prom
       }
 
       let cleanDesc = description ? cleanCDATA(description) : undefined;
+      const cleanEncoded = contentEncoded ? cleanCDATA(contentEncoded) : undefined;
       // Remover trailing artefatos como "The post ... appeared first on ..." e reticências
       if (cleanDesc) {
         cleanDesc = cleanDesc
@@ -331,9 +333,19 @@ async function parseRSSFeed(url: string, source: string, category: string): Prom
           .replace(/•?\s*Leia mais.*$/i, '')
           .replace(/…$/g, '')
           .trim()
-          // Aumenta o tamanho do resumo para oferecer mais contexto no popup
-          // Mantém limite razoável para não estourar layout; o Dialog terá scroll
-          .substring(0, 1500);
+          .substring(0, 3000);
+      }
+      // Preferir content:encoded quando fornecer um corpo mais rico que a description
+      if (cleanEncoded) {
+        const richer = cleanEncoded
+          .replace(/The post[\s\S]*$/i, '')
+          .replace(/•?\s*Leia mais.*$/i, '')
+          .replace(/…$/g, '')
+          .trim()
+          .substring(0, 3000);
+        if (!cleanDesc || richer.length > (cleanDesc?.length || 0)) {
+          cleanDesc = richer;
+        }
       }
 
       articles.push({
@@ -545,7 +557,8 @@ Deno.serve(async (req) => {
       let extended_summary_pt: string | undefined;
 
       const maybeEnglish = isLikelyEnglish(`${article.title} ${article.description || ''}`);
-      if (maybeEnglish) {
+      // Traduzir sempre título e descrição quando há provedor configurado (sem depender da heurística)
+      {
         const tTitle = await translateTextToPt(article.title);
         if (tTitle) {
           title_pt = tTitle.translated;
@@ -567,8 +580,8 @@ Deno.serve(async (req) => {
           const pageRes = await fetchWithRetry(article.url, { headers: { 'User-Agent': 'ReconNews-Bot/1.0' } }, 2, 12000, 2000);
           if (pageRes.ok) {
             const html = await pageRes.text();
-            let content = extractMainContent(html).substring(0, 6000);
-            if (content && maybeEnglish) {
+            let content = extractMainContent(html).substring(0, 8000);
+            if (content) {
               const tFull = await translateTextToPt(content);
               if (tFull) {
                 extended_summary_pt = tFull.translated;

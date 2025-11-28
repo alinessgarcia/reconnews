@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,8 @@ interface ArticleCardProps {
   fullDescription?: string;
   fullDescriptionPt?: string;
   translationProvider?: string;
+  // Modo de tradução (global) vindo da página
+  translationMode?: "auto" | "pt" | "original";
   url: string;
   source: string;
   publishedAt?: string;
@@ -30,24 +33,38 @@ export const ArticleCard = ({
   fullDescription,
   fullDescriptionPt,
   translationProvider,
+  translationMode = "auto",
   url,
   source,
   publishedAt,
   imageUrl,
   category,
 }: ArticleCardProps) => {
+  // Estado local do popup para permitir alternância de idioma
+  // Por padrão, segue o modo global; se o usuário alternar no popup, usamos o local
+  const [localMode, setLocalMode] = useState<"auto" | "pt" | "original" | null>(null);
+  const effectiveMode = localMode ?? translationMode;
+  const hasTranslation = Boolean(titlePt || descriptionPt || fullDescriptionPt);
   const formattedDate = publishedAt
     ? format(new Date(publishedAt), "dd 'de' MMMM, yyyy", { locale: ptBR })
     : null;
 
-  const displayTitle = decodeHTML(titlePt || title);
-  const rawDescription = descriptionPt || description || "";
+  // Helper para escolher texto conforme o modo
+  const pickByMode = (pt?: string, original?: string) => {
+    if (effectiveMode === "pt") return pt ?? original ?? "";
+    if (effectiveMode === "original") return original ?? pt ?? "";
+    // auto
+    return pt ?? original ?? "";
+  };
+
+  const displayTitle = decodeHTML(pickByMode(titlePt, title));
+  const rawDescription = pickByMode(descriptionPt, description);
   const sanitized = sanitizeSummary(rawDescription);
   // Fallback: se a sanitização remover tudo, use o texto bruto para não ficar sem resumo
   const displayDescription = sanitized && sanitized.length > 0 ? sanitized : (rawDescription || undefined);
 
   // Conteúdo completo do popup (preferir versão traduzida e estendida)
-  const rawFull = fullDescriptionPt || fullDescription || rawDescription;
+  const rawFull = pickByMode(fullDescriptionPt, fullDescription) || rawDescription;
   const sanitizedFull = sanitizeSummary(rawFull);
   const displayFull = sanitizedFull && sanitizedFull.length > 0 ? sanitizedFull : (rawFull || undefined);
   
@@ -144,6 +161,26 @@ export const ArticleCard = ({
                   </DialogDescription>
                 )}
               </DialogHeader>
+              {/* Toggle de idioma dentro do popup */}
+              <div className="flex items-center justify-end gap-2 mb-2">
+                <span className="text-xs text-muted-foreground">Idioma:</span>
+                <div className="flex rounded-md border border-border overflow-hidden">
+                  <button
+                    className={`px-2 py-1 text-xs ${effectiveMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                    onClick={() => setLocalMode('auto')}
+                  >Auto</button>
+                  <button
+                    className={`px-2 py-1 text-xs ${effectiveMode === 'pt' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${!hasTranslation ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => hasTranslation && setLocalMode('pt')}
+                    title={hasTranslation ? 'Mostrar tradução' : 'Tradução indisponível'}
+                    disabled={!hasTranslation}
+                  >PT-BR</button>
+                  <button
+                    className={`px-2 py-1 text-xs ${effectiveMode === 'original' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                    onClick={() => setLocalMode('original')}
+                  >Original</button>
+                </div>
+              </div>
               {imageUrl && (
                 <img
                   src={proxiedImage || imageUrl}
@@ -200,6 +237,26 @@ export const ArticleCard = ({
                       </DialogDescription>
                     )}
                   </DialogHeader>
+                  {/* Toggle de idioma dentro do popup */}
+                  <div className="flex items-center justify-end gap-2 mb-2">
+                    <span className="text-xs text-muted-foreground">Idioma:</span>
+                    <div className="flex rounded-md border border-border overflow-hidden">
+                      <button
+                        className={`px-2 py-1 text-xs ${effectiveMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                        onClick={() => setLocalMode('auto')}
+                      >Auto</button>
+                      <button
+                        className={`px-2 py-1 text-xs ${effectiveMode === 'pt' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${!hasTranslation ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        onClick={() => hasTranslation && setLocalMode('pt')}
+                        title={hasTranslation ? 'Mostrar tradução' : 'Tradução indisponível'}
+                        disabled={!hasTranslation}
+                      >PT-BR</button>
+                      <button
+                        className={`px-2 py-1 text-xs ${effectiveMode === 'original' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                        onClick={() => setLocalMode('original')}
+                      >Original</button>
+                    </div>
+                  </div>
                   {imageUrl && (
                     <img
                       src={proxiedImage || imageUrl}
