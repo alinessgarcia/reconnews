@@ -5,7 +5,6 @@ import { ArticleCard } from "@/components/ArticleCard";
 // StatsBar removido conforme solicitação: dados visíveis não relevantes ao público
 import { SearchBar } from "@/components/SearchBar";
 import { Pagination } from "@/components/Pagination";
-import { CollectingBar } from "@/components/CollectingBar";
 import { Newspaper, RefreshCw, Filter, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
@@ -50,8 +49,6 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [isCollecting, setIsCollecting] = useState(false);
-  const [collectProgress, setCollectProgress] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   // Modo de tradução global: auto (usa PT se disponível), pt (força PT-BR), original (força idioma original)
   const [translationMode, setTranslationMode] = useState<"auto" | "pt" | "original">("pt");
@@ -105,75 +102,7 @@ const Index = () => {
     setCurrentPage(1);
   }, [selectedRegion, selectedEvidence, selectedTheme]);
 
-  const triggerCollectAnimation = async () => {
-    if (isCollecting) return;
-    
-    setIsCollecting(true);
-    setCollectProgress(0);
-
-    try {
-      // Animação da barra de progresso
-      const interval = setInterval(() => {
-        setCollectProgress(prev => {
-          if (prev >= 95) {
-            return 95; // Para em 95% até a função terminar
-          }
-          return prev + 2;
-        });
-      }, 50);
-
-      // Invocar a função de scraping
-      const { data, error } = await supabase.functions.invoke('scrape-news', {
-        body: { manual: true }
-      });
-
-      clearInterval(interval);
-      
-      if (error) {
-        console.error('Erro ao coletar notícias:', error);
-        toast({
-          title: "Erro na coleta",
-          description: "Não foi possível coletar as notícias. Tente novamente.",
-          variant: "destructive",
-        });
-        setIsCollecting(false);
-        setCollectProgress(0);
-        return;
-      }
-
-      setCollectProgress(100);
-
-      // Aguardar um pouco e recarregar os artigos
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await fetchArticles();
-
-      const processed = data?.uniqueArticles ?? 0;
-      const inserted = data?.newArticles ?? 0;
-      const msgBase = processed > 0
-        ? `${processed} artigos foram verificados e atualizados.`
-        : `As fontes foram verificadas. Obrigado por cooperar!`;
-      const msgNew = inserted > 0 ? ` (${inserted} novos)` : "";
-      toast({
-        title: "Obrigado por cooperar!",
-        description: `${msgBase}${msgNew}`,
-      });
-      
-      // Reset após mostrar 100%
-      setTimeout(() => {
-        setIsCollecting(false);
-        setCollectProgress(0);
-      }, 1000);
-    } catch (err) {
-      console.error('Erro na coleta:', err);
-      toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao coletar notícias.",
-        variant: "destructive",
-      });
-      setIsCollecting(false);
-      setCollectProgress(0);
-    }
-  };
+  // Coletas e retranslações são 100% automatizadas via GitHub Actions; UI não oferece ações manuais.
 
   // Contagens para filtros acadêmicos
   const academicCounts = useMemo(() => facetCounts(articles), [articles]);
@@ -526,7 +455,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <CollectingBar progress={collectProgress} isCollecting={isCollecting} />
       
       {/* Hero Section */}
       <header className="relative overflow-hidden bg-gradient-to-r from-primary via-primary/90 to-accent text-primary-foreground py-20 px-4">
@@ -545,59 +473,7 @@ const Index = () => {
                 {/* Removido texto sobre horários/frequência de atualização conforme solicitação */}
               </div>
             </div>
-            <div className="flex gap-3">
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={fetchArticles}
-                disabled={loading}
-                className="gap-2 shadow-lg"
-              >
-                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                Atualizar
-              </Button>
-              <Button
-                variant="default"
-                size="lg"
-                onClick={triggerCollectAnimation}
-                disabled={loading || isCollecting}
-                className="gap-2 shadow-lg relative overflow-hidden group"
-              >
-                <Newspaper className={`h-4 w-4 ${isCollecting ? "animate-bounce" : ""}`} />
-                Coletar Agora
-                {isCollecting && (
-                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                disabled={loading}
-                className="gap-2 shadow-lg"
-                onClick={async () => {
-                  try {
-                    const { data, error } = await supabase.functions.invoke('retranslate-articles', {
-                      body: { limit: 100 }
-                    });
-                    if (error) throw error;
-                    await fetchArticles();
-                    toast({
-                      title: "Retradução executada",
-                      description: `Processados ${data?.processed ?? 0}, atualizados ${data?.updated ?? 0}`,
-                    });
-                  } catch (err) {
-                    console.error('Erro na retranslação:', err);
-                    toast({
-                      title: "Erro",
-                      description: "Não foi possível reprocessar traduções agora.",
-                      variant: "destructive",
-                    });
-                  }
-                }}
-              >
-                Retraduzir
-              </Button>
-            </div>
+            <div className="flex gap-3" />
           </div>
 
           {/* Área de estatísticas removida */}
