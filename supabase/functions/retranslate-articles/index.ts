@@ -114,6 +114,40 @@ async function translateTextToPt(text: string): Promise<{ translated: string; pr
   }
 }
 
+async function translateViaMyMemory(text: string): Promise<{ translated: string; provider: string } | null> {
+  try {
+    const qs = `q=${encodeURIComponent(text)}&langpair=${encodeURIComponent('auto|pt-BR')}`;
+    const res = await fetch(`https://api.mymemory.translated.net/get?${qs}`, {
+      headers: { 'User-Agent': 'ReconNews-Bot/1.0' },
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const translated = data?.responseData?.translatedText || '';
+    return translated ? { translated, provider: 'mymemory' } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function translateTextToPtWithFallback(text: string): Promise<{ translated: string; provider: string } | null> {
+  const primary = await translateTextToPt(text);
+  if (primary) return primary;
+  if ((text || '').length <= 500) return await translateViaMyMemory(text);
+  const chunks: string[] = [];
+  for (let i = 0; i < text.length; i += 480) {
+    chunks.push(text.slice(i, i + 480));
+  }
+  const parts: string[] = [];
+  for (const c of chunks) {
+    const t = await translateViaMyMemory(c);
+    parts.push(t?.translated || c);
+    await new Promise(r => setTimeout(r, 300));
+  }
+  const joined = parts.join(' ');
+  return { translated: joined, provider: 'mymemory' };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -160,14 +194,14 @@ Deno.serve(async (req) => {
       const patch: Record<string, any> = {};
 
       if (!a.title_pt && a.title) {
-        const t = await translateTextToPt(a.title);
+        const t = await translateTextToPtWithFallback(a.title);
         if (t) {
           patch.title_pt = t.translated;
           patch.translation_provider = t.provider;
         }
       }
       if (!a.description_pt && a.description) {
-        const t = await translateTextToPt(a.description);
+        const t = await translateTextToPtWithFallback(a.description);
         if (t) {
           patch.description_pt = t.translated;
           patch.translation_provider = t.provider;
@@ -180,7 +214,7 @@ Deno.serve(async (req) => {
             const html = await pageRes.text();
             let content = extractMainContent(html).substring(0, 8000);
             if (content) {
-              const t = await translateTextToPt(content);
+              const t = await translateTextToPtWithFallback(content);
               if (t) {
                 patch.extended_summary_pt = t.translated;
                 patch.translation_provider = t.provider;

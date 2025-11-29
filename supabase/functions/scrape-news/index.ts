@@ -136,6 +136,40 @@ async function translateTextToPt(text: string): Promise<{ translated: string; pr
   }
 }
 
+async function translateViaMyMemory(text: string): Promise<{ translated: string; provider: string } | null> {
+  try {
+    const qs = `q=${encodeURIComponent(text)}&langpair=${encodeURIComponent('auto|pt-BR')}`;
+    const res = await fetch(`https://api.mymemory.translated.net/get?${qs}`, {
+      headers: { 'User-Agent': 'ReconNews-Bot/1.0' },
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const translated = data?.responseData?.translatedText || '';
+    return translated ? { translated, provider: 'mymemory' } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function translateTextToPtWithFallback(text: string): Promise<{ translated: string; provider: string } | null> {
+  const primary = await translateTextToPt(text);
+  if (primary) return primary;
+  if ((text || '').length <= 500) return await translateViaMyMemory(text);
+  const chunks: string[] = [];
+  for (let i = 0; i < text.length; i += 480) {
+    chunks.push(text.slice(i, i + 480));
+  }
+  const parts: string[] = [];
+  for (const c of chunks) {
+    const t = await translateViaMyMemory(c);
+    parts.push(t?.translated || c);
+    await new Promise(r => setTimeout(r, 300));
+  }
+  const joined = parts.join(' ');
+  return { translated: joined, provider: 'mymemory' };
+}
+
 function stripTags(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -559,13 +593,13 @@ Deno.serve(async (req) => {
       const maybeEnglish = isLikelyEnglish(`${article.title} ${article.description || ''}`);
       // Traduzir sempre título e descrição quando há provedor configurado (sem depender da heurística)
       {
-        const tTitle = await translateTextToPt(article.title);
+        const tTitle = await translateTextToPtWithFallback(article.title);
         if (tTitle) {
           title_pt = tTitle.translated;
           translation_provider = tTitle.provider;
         }
         if (article.description) {
-          const tDesc = await translateTextToPt(article.description);
+          const tDesc = await translateTextToPtWithFallback(article.description);
           if (tDesc) {
             description_pt = tDesc.translated;
             translation_provider = tDesc.provider;
@@ -582,7 +616,7 @@ Deno.serve(async (req) => {
             const html = await pageRes.text();
             let content = extractMainContent(html).substring(0, 8000);
             if (content) {
-              const tFull = await translateTextToPt(content);
+              const tFull = await translateTextToPtWithFallback(content);
               if (tFull) {
                 extended_summary_pt = tFull.translated;
                 translation_provider = tFull.provider;
