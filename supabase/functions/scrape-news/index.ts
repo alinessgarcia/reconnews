@@ -311,9 +311,16 @@ async function parseRSSFeed(url: string, source: string, category: string): Prom
 
   for (const itemXml of items.slice(0, 20)) {
       const title = extractXMLTag(itemXml, 'title');
-      const link = extractXMLTag(itemXml, 'link');
+      let link = extractXMLTag(itemXml, 'link');
       
       if (!title || !link || title.length < 10) continue;
+
+      // Google News costuma usar redirecionador; extrair link final quando houver parâmetro url=
+      try {
+        const u = new URL(cleanCDATA(link));
+        const real = u.searchParams.get('url');
+        if (real) link = real;
+      } catch {}
 
       const description = extractXMLTag(itemXml, 'description');
       const contentEncoded = extractXMLTag(itemXml, 'content:encoded');
@@ -579,6 +586,12 @@ Deno.serve(async (req) => {
         if (BLOCKED_HOSTS.has(host)) {
           console.log(`  🚫 Bloqueado por domínio: ${host}`);
           return false;
+        }
+        const countryOnly = (Deno.env.get('RECON_COUNTRY_ONLY') || '').toUpperCase();
+        if (countryOnly === 'BR') {
+          if (!(host.endsWith('.br'))) {
+            return false;
+          }
         }
         return true;
       } catch {

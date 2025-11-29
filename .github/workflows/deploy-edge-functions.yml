@@ -44,7 +44,9 @@ jobs:
             RECON_DEEPL_API_KEY="${{ secrets.RECON_DEEPL_API_KEY }}" \
             # Política editorial opcional
             RECON_ALLOWED_SOURCES="${{ secrets.RECON_ALLOWED_SOURCES }}" \
-            RECON_BLOCKED_HOSTS="${{ secrets.RECON_BLOCKED_HOSTS }}"
+            RECON_BLOCKED_HOSTS="${{ secrets.RECON_BLOCKED_HOSTS }}" \
+            # Restringir a conteúdo brasileiro quando desejado (default BR se não definido)
+            RECON_COUNTRY_ONLY="${{ secrets.RECON_COUNTRY_ONLY || 'BR' }}"
 
       - name: Deploy scrape-news
         run: supabase functions deploy scrape-news

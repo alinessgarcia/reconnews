@@ -65,7 +65,8 @@ const Index = () => {
         .select("*")
         .order("published_at", { ascending: false })
         .order("scraped_at", { ascending: false })
-        .limit(200);
+        .limit(200)
+        .ilike('url', '%://%.br/%');
 
       // Filtros server-side para facetas acadêmicas
       if (selectedRegion) {
