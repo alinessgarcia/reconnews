@@ -52,3 +52,5 @@ jobs:
         run: supabase functions deploy scrape-news
       - name: Deploy retranslate-articles
         run: supabase functions deploy retranslate-articles
+      - name: Deploy cleanup-non-br
+        run: supabase functions deploy cleanup-non-br

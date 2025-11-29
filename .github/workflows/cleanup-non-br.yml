@@ -1,0 +1,28 @@
+name: Cleanup Non-BR Articles
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/cleanup-non-br.yml'
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call cleanup-non-br function
+        env:
+          FUNC_URL: "${{ secrets.SUPABASE_URL }}/functions/v1/cleanup-non-br"
+          TOKEN: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
+        run: |
+          set -e
+          http_code=$(curl -sS -w "%{http_code}" -o output.json -X POST \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "$FUNC_URL")
+          echo "HTTP: ${http_code}"
+          cat output.json || true
+          test "$http_code" = "200"
