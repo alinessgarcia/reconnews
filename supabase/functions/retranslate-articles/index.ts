@@ -128,6 +128,7 @@ async function translateViaMyMemory(text: string): Promise<{ translated: string;
     const data = await res.json();
     if (data?.responseStatus !== 200) return null;
     const translated = data?.responseData?.translatedText || '';
+    if (isInvalidTranslation(translated)) return null;
     return translated ? { translated, provider: 'mymemory' } : null;
   } catch {
     return null;
@@ -145,7 +146,7 @@ async function translateTextToPtWithFallback(text: string): Promise<{ translated
   const parts: string[] = [];
   for (const c of chunks) {
     const t = await translateViaMyMemory(c);
-    parts.push(t?.translated || c);
+    parts.push(isInvalidTranslation(t?.translated) ? c : (t?.translated || c));
     await new Promise(r => setTimeout(r, 300));
   }
   const joined = parts.join(' ');
@@ -197,16 +198,16 @@ Deno.serve(async (req) => {
       processed++;
       const patch: Record<string, any> = {};
 
-      if (!a.title_pt && a.title) {
+      if ((!a.title_pt || isInvalidTranslation(a.title_pt)) && a.title) {
         const t = await translateTextToPtWithFallback(a.title);
         if (t) {
           patch.title_pt = t.translated;
           patch.translation_provider = t.provider;
         }
       }
-      if (!a.description_pt && a.description) {
+      if ((!a.description_pt || isInvalidTranslation(a.description_pt)) && a.description) {
         const t = await translateTextToPtWithFallback(a.description);
-        if (t) {
+        if (t && !isInvalidTranslation(t.translated)) {
           patch.description_pt = t.translated;
           patch.translation_provider = t.provider;
         }
@@ -217,9 +218,9 @@ Deno.serve(async (req) => {
           if (pageRes.ok) {
             const html = await pageRes.text();
             let content = extractMainContent(html).substring(0, 8000);
-            if (content) {
+            if (content && (!a.extended_summary_pt || isInvalidTranslation(a.extended_summary_pt))) {
               const t = await translateTextToPtWithFallback(content);
-              if (t) {
+              if (t && !isInvalidTranslation(t.translated)) {
                 patch.extended_summary_pt = t.translated;
                 patch.translation_provider = t.provider;
               }
@@ -255,3 +256,13 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ success: false, error: 'Falha ao reprocessar traduções' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 });
   }
 });
+function isInvalidTranslation(text: string | null | undefined): boolean {
+  const s = (text || '').toLowerCase();
+  return (
+    s.includes("invalid source language") ||
+    s.includes("example: langpair=") ||
+    s.includes("max allowed query") ||
+    s.includes("500 chars") ||
+    s.includes("some may have no content")
+  );
+}

@@ -152,6 +152,7 @@ async function translateViaMyMemory(text: string): Promise<{ translated: string;
     const data = await res.json();
     if (data?.responseStatus !== 200) return null;
     const translated = data?.responseData?.translatedText || '';
+    if (isInvalidTranslation(translated)) return null;
     return translated ? { translated, provider: 'mymemory' } : null;
   } catch {
     return null;
@@ -164,12 +165,12 @@ async function translateTextToPtWithFallback(text: string): Promise<{ translated
   if ((text || '').length <= 400) return await translateViaMyMemory(text);
   const chunks: string[] = [];
   for (let i = 0; i < text.length; i += 380) {
-    chunks.push(text.slice(i, i + 480));
+    chunks.push(text.slice(i, i + 380));
   }
   const parts: string[] = [];
   for (const c of chunks) {
     const t = await translateViaMyMemory(c);
-    parts.push(t?.translated || c);
+    parts.push(isInvalidTranslation(t?.translated) ? c : (t?.translated || c));
     await new Promise(r => setTimeout(r, 300));
   }
   const joined = parts.join(' ');
@@ -606,7 +607,7 @@ Deno.serve(async (req) => {
         }
         if (article.description) {
           const tDesc = await translateTextToPtWithFallback(article.description);
-          if (tDesc) {
+          if (tDesc && !isInvalidTranslation(tDesc.translated)) {
             description_pt = tDesc.translated;
             translation_provider = tDesc.provider;
           }
@@ -623,7 +624,7 @@ Deno.serve(async (req) => {
             let content = extractMainContent(html).substring(0, 8000);
             if (content) {
               const tFull = await translateTextToPtWithFallback(content);
-              if (tFull) {
+              if (tFull && !isInvalidTranslation(tFull.translated)) {
                 extended_summary_pt = tFull.translated;
                 translation_provider = tFull.provider;
               }
@@ -697,3 +698,13 @@ Deno.serve(async (req) => {
     );
   }
 });
+function isInvalidTranslation(text: string | null | undefined): boolean {
+  const s = (text || '').toLowerCase();
+  return (
+    s.includes("invalid source language") ||
+    s.includes("example: langpair=") ||
+    s.includes("max allowed query") ||
+    s.includes("500 chars") ||
+    s.includes("some may have no content")
+  );
+}

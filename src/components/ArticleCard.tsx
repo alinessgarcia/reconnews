@@ -58,17 +58,17 @@ export const ArticleCard = ({
     if (effectiveMode === "pt") return pt ?? original ?? "";
     if (effectiveMode === "original") return original ?? pt ?? "";
     // auto
-    return pt ?? original ?? "";
+    return (pt && !isInvalidTranslation(pt)) ? pt : (original ?? "");
   };
 
-  const displayTitle = decodeHTML(pickByMode(titlePt ?? clientTitlePt, title));
-  const rawDescription = pickByMode(descriptionPt ?? clientDescPt, description);
+  const displayTitle = decodeHTML(pickByMode((titlePt && !isInvalidTranslation(titlePt)) ? titlePt : clientTitlePt, title));
+  const rawDescription = pickByMode((descriptionPt && !isInvalidTranslation(descriptionPt)) ? descriptionPt : clientDescPt, description);
   const sanitized = sanitizeSummary(rawDescription);
   // Fallback: se a sanitização remover tudo, use o texto bruto para não ficar sem resumo
   const displayDescription = sanitized && sanitized.length > 0 ? sanitized : (rawDescription || undefined);
 
   // Conteúdo completo do popup (preferir versão traduzida e estendida)
-  const rawFull = pickByMode(fullDescriptionPt ?? clientFullPt, fullDescription) || rawDescription;
+  const rawFull = pickByMode((fullDescriptionPt && !isInvalidTranslation(fullDescriptionPt)) ? fullDescriptionPt : clientFullPt, fullDescription) || rawDescription;
   const sanitizedFull = sanitizeSummary(rawFull);
   const displayFull = sanitizedFull && sanitizedFull.length > 0 ? sanitizedFull : (rawFull || undefined);
   
@@ -350,3 +350,13 @@ export const ArticleCard = ({
     </Card>
   );
 };
+  const isInvalidTranslation = (s?: string) => {
+    const t = (s || '').toLowerCase();
+    return (
+      t.includes('invalid source language') ||
+      t.includes('example: langpair=') ||
+      t.includes('max allowed query') ||
+      t.includes('500 chars') ||
+      t.includes('some may have no content')
+    );
+  };
