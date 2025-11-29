@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,11 +44,7 @@ export const ArticleCard = ({
   // Por padrão, segue o modo global; se o usuário alternar no popup, usamos o local
   const [localMode, setLocalMode] = useState<"auto" | "pt" | "original" | null>(null);
   const effectiveMode = localMode ?? translationMode;
-  const [clientTitlePt, setClientTitlePt] = useState<string | undefined>(undefined);
-  const [clientDescPt, setClientDescPt] = useState<string | undefined>(undefined);
-  const [clientFullPt, setClientFullPt] = useState<string | undefined>(undefined);
-  const [clientProvider, setClientProvider] = useState<string | undefined>(undefined);
-  const hasTranslation = Boolean(titlePt || descriptionPt || fullDescriptionPt || clientTitlePt || clientDescPt || clientFullPt);
+  const hasTranslation = Boolean(titlePt || descriptionPt || fullDescriptionPt);
   const formattedDate = publishedAt
     ? format(new Date(publishedAt), "dd 'de' MMMM, yyyy", { locale: ptBR })
     : null;
@@ -61,78 +57,21 @@ export const ArticleCard = ({
     return (pt && !isInvalidTranslation(pt)) ? pt : (original ?? "");
   };
 
-  const displayTitle = decodeHTML(pickByMode((titlePt && !isInvalidTranslation(titlePt)) ? titlePt : clientTitlePt, title));
-  const rawDescription = pickByMode((descriptionPt && !isInvalidTranslation(descriptionPt)) ? descriptionPt : clientDescPt, description);
+  const displayTitle = decodeHTML(pickByMode((titlePt && !isInvalidTranslation(titlePt)) ? titlePt : undefined, title));
+  const rawDescription = pickByMode((descriptionPt && !isInvalidTranslation(descriptionPt)) ? descriptionPt : undefined, description);
   const sanitized = sanitizeSummary(rawDescription);
   // Fallback: se a sanitização remover tudo, use o texto bruto para não ficar sem resumo
   const displayDescription = sanitized && sanitized.length > 0 ? sanitized : (rawDescription || undefined);
 
   // Conteúdo completo do popup (preferir versão traduzida e estendida)
-  const rawFull = pickByMode((fullDescriptionPt && !isInvalidTranslation(fullDescriptionPt)) ? fullDescriptionPt : clientFullPt, fullDescription) || rawDescription;
+  const rawFull = pickByMode((fullDescriptionPt && !isInvalidTranslation(fullDescriptionPt)) ? fullDescriptionPt : undefined, fullDescription) || rawDescription;
   const sanitizedFull = sanitizeSummary(rawFull);
   const displayFull = sanitizedFull && sanitizedFull.length > 0 ? sanitizedFull : (rawFull || undefined);
   
   // Usa proxy público para evitar bloqueios de hotlink sem usar Storage
   const proxiedImage = imageUrl ? toProxyImage(imageUrl, { width: 800, height: 450, fit: 'cover', output: 'webp', dpr: 2 }) : undefined;
 
-  useEffect(() => {
-    const need = effectiveMode === 'pt' && !(titlePt || descriptionPt || fullDescriptionPt);
-    if (!need) return;
-    const key = `recon_trans_${url}`;
-    try {
-      const cached = localStorage.getItem(key);
-      if (cached) {
-        const obj = JSON.parse(cached);
-        setClientTitlePt(obj.title_pt || undefined);
-        setClientDescPt(obj.description_pt || undefined);
-        setClientFullPt(obj.extended_summary_pt || undefined);
-        setClientProvider(obj.provider || 'mymemory');
-        return;
-      }
-    } catch {}
-
-    const chunk = (s: string, n = 380) => {
-      const a: string[] = [];
-      for (let i = 0; i < s.length; i += n) a.push(s.slice(i, i + n));
-      return a;
-    };
-    const translate = async (text: string) => {
-      // Se já parece PT, retorna como está
-      const s = text.toLowerCase();
-      const isPtLike = /[áéíóúâêîôûãõç]/.test(s) || /ção| que | de | para | com /.test(s);
-      if (isPtLike) return text;
-      const qs = `q=${encodeURIComponent(text)}&langpair=en|pt`;
-      const res = await fetch(`https://api.mymemory.translated.net/get?${qs}`, { headers: { 'User-Agent': 'ReconNews-Client/1.0' } });
-      if (!res.ok) return text;
-      const data = await res.json();
-      if (data?.responseStatus !== 200) return text;
-      return data?.responseData?.translatedText || text;
-    };
-    (async () => {
-      const tTitle = title ? await translate(title) : undefined;
-      const baseFull = fullDescription || description || '';
-      let tFull: string | undefined = undefined;
-      if (baseFull) {
-        if (baseFull.length <= 500) {
-          tFull = await translate(baseFull);
-        } else {
-          const parts = [] as string[];
-          for (const c of chunk(baseFull)) {
-            parts.push(await translate(c));
-          }
-          tFull = parts.join(' ');
-        }
-      }
-      const tDesc = description ? await translate(description) : undefined;
-      setClientTitlePt(tTitle || undefined);
-      setClientFullPt(tFull || undefined);
-      setClientDescPt(tDesc || undefined);
-      setClientProvider('mymemory');
-      try {
-        localStorage.setItem(key, JSON.stringify({ title_pt: tTitle, description_pt: tDesc, extended_summary_pt: tFull, provider: 'mymemory' }));
-      } catch {}
-    })();
-  }, [effectiveMode, title, description, fullDescription, titlePt, descriptionPt, fullDescriptionPt, url]);
+  // Sem tradução cliente: apenas conteúdo traduzido vindo do backend
 
   const getCategoryColor = (category?: string) => {
     if (!category) return "bg-muted";
@@ -189,8 +128,8 @@ export const ArticleCard = ({
             <Badge variant="outline" className="text-xs font-medium border-primary/30 text-primary">
               {source}
             </Badge>
-            {(titlePt || descriptionPt || fullDescriptionPt || clientTitlePt || clientDescPt || clientFullPt) && (
-              <Badge className="bg-green-600 text-white text-[10px] border-0" title={(translationProvider || clientProvider) ? `Traduzido automaticamente via ${translationProvider || clientProvider}` : "Traduzido automaticamente"}>
+            {(titlePt || descriptionPt || fullDescriptionPt) && (
+              <Badge className="bg-green-600 text-white text-[10px] border-0" title={translationProvider ? `Traduzido automaticamente via ${translationProvider}` : "Traduzido automaticamente"}>
                 Traduzido
               </Badge>
             )}
