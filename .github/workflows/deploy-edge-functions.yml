@@ -54,3 +54,28 @@ jobs:
         run: supabase functions deploy retranslate-articles
       - name: Deploy cleanup-non-br
         run: supabase functions deploy cleanup-non-br
+      - name: Invoke cleanup-non-br (post-deploy)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -e
+          echo "Calling cleanup-non-br after deploy"
+          attempt=1
+          max=3
+          while [ $attempt -le $max ]; do
+            http_code=$(curl -sS -w "%{http_code}" -o output.json -X POST \
+              -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+              -H "Content-Type: application/json" \
+              -d '{}' \
+              "${SUPABASE_URL}/functions/v1/cleanup-non-br" || true)
+            echo "HTTP: ${http_code}"
+            if [ "$http_code" = "200" ]; then
+              echo "Cleanup executed"
+              break
+            fi
+            echo "Retrying in 20s..."
+            sleep 20
+            attempt=$((attempt+1))
+          done
+          echo "Response body:" && cat output.json || true
