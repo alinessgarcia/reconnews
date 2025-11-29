@@ -91,16 +91,21 @@ export const ArticleCard = ({
       }
     } catch {}
 
-    const chunk = (s: string, n = 480) => {
+    const chunk = (s: string, n = 380) => {
       const a: string[] = [];
       for (let i = 0; i < s.length; i += n) a.push(s.slice(i, i + n));
       return a;
     };
     const translate = async (text: string) => {
-      const qs = `q=${encodeURIComponent(text)}&langpair=${encodeURIComponent('auto|pt-BR')}`;
+      // Se já parece PT, retorna como está
+      const s = text.toLowerCase();
+      const isPtLike = /[áéíóúâêîôûãõç]/.test(s) || /ção| que | de | para | com /.test(s);
+      if (isPtLike) return text;
+      const qs = `q=${encodeURIComponent(text)}&langpair=en|pt`;
       const res = await fetch(`https://api.mymemory.translated.net/get?${qs}`, { headers: { 'User-Agent': 'ReconNews-Client/1.0' } });
       if (!res.ok) return text;
       const data = await res.json();
+      if (data?.responseStatus !== 200) return text;
       return data?.responseData?.translatedText || text;
     };
     (async () => {

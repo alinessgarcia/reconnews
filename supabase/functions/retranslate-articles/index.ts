@@ -115,14 +115,18 @@ async function translateTextToPt(text: string): Promise<{ translated: string; pr
 }
 
 async function translateViaMyMemory(text: string): Promise<{ translated: string; provider: string } | null> {
+  const s = (text || '').toLowerCase();
+  const isPtLike = /[áéíóúâêîôûãõç]/.test(s) || /ção|que|de |para | com /.test(s);
+  if (isPtLike) return { translated: text, provider: 'mymemory' };
   try {
-    const qs = `q=${encodeURIComponent(text)}&langpair=${encodeURIComponent('auto|pt-BR')}`;
+    const qs = `q=${encodeURIComponent(text)}&langpair=en|pt`;
     const res = await fetch(`https://api.mymemory.translated.net/get?${qs}`, {
       headers: { 'User-Agent': 'ReconNews-Bot/1.0' },
       signal: AbortSignal.timeout(12000)
     });
     if (!res.ok) return null;
     const data = await res.json();
+    if (data?.responseStatus !== 200) return null;
     const translated = data?.responseData?.translatedText || '';
     return translated ? { translated, provider: 'mymemory' } : null;
   } catch {
@@ -133,10 +137,10 @@ async function translateViaMyMemory(text: string): Promise<{ translated: string;
 async function translateTextToPtWithFallback(text: string): Promise<{ translated: string; provider: string } | null> {
   const primary = await translateTextToPt(text);
   if (primary) return primary;
-  if ((text || '').length <= 500) return await translateViaMyMemory(text);
+  if ((text || '').length <= 400) return await translateViaMyMemory(text);
   const chunks: string[] = [];
-  for (let i = 0; i < text.length; i += 480) {
-    chunks.push(text.slice(i, i + 480));
+  for (let i = 0; i < text.length; i += 380) {
+    chunks.push(text.slice(i, i + 380));
   }
   const parts: string[] = [];
   for (const c of chunks) {
