@@ -1,10 +1,6 @@
 name: Cleanup Non-BR Articles
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - '.github/workflows/cleanup-non-br.yml'
   workflow_dispatch:
 
 jobs:
@@ -12,6 +8,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Login and link
+        run: |
+          supabase login --token "${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+          supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+
+      - name: Deploy cleanup-non-br function
+        run: supabase functions deploy cleanup-non-br
+
       - name: Call cleanup-non-br function
         env:
           FUNC_URL: "${{ secrets.SUPABASE_URL }}/functions/v1/cleanup-non-br"
