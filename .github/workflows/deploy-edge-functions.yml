@@ -57,7 +57,7 @@ jobs:
         run: supabase functions deploy retranslate-articles
       - name: Deploy cleanup-non-br
         run: supabase functions deploy cleanup-non-br
-      - name: Invoke cleanup-non-br (post-deploy)
+      - name: Invoke cleanup-non-br (post-deploy run)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
