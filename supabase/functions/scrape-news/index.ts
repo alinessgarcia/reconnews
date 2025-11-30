@@ -159,9 +159,39 @@ async function translateViaMyMemory(text: string): Promise<{ translated: string;
   }
 }
 
+async function translateViaFreeAPI(text: string): Promise<{ translated: string; provider: string } | null> {
+  const url = Deno.env.get('RECON_FREE_API_URL') || '';
+  if (!url) return null;
+  const key = Deno.env.get('RECON_FREE_API_KEY') || '';
+  const s = (text || '').toLowerCase();
+  const isPtLike = /[áéíóúâêîôûãõç]/.test(s) || /ção| que | de | para | com /.test(s);
+  const src = isPtLike ? 'pt' : 'en';
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(key ? { 'Authorization': `Bearer ${key}` } : {}),
+        'User-Agent': 'ReconNews-Bot/1.0'
+      },
+      body: JSON.stringify({ text, source_language: src, target_language: 'pt-BR' }),
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const translated = data?.translated_text || data?.translation || '';
+    if (isInvalidTranslation(translated)) return null;
+    return translated ? { translated, provider: 'freeapi' } : null;
+  } catch {
+    return null;
+  }
+}
+
 async function translateTextToPtWithFallback(text: string): Promise<{ translated: string; provider: string } | null> {
   const primary = await translateTextToPt(text);
   if (primary) return primary;
+  const freeApi = await translateViaFreeAPI(text);
+  if (freeApi) return freeApi;
   if ((text || '').length <= 400) return await translateViaMyMemory(text);
   const chunks: string[] = [];
   for (let i = 0; i < text.length; i += 380) {
