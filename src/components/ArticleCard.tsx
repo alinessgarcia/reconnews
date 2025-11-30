@@ -85,6 +85,14 @@ export const ArticleCard = ({
       "Pesquisadores e Estudos": "bg-green-500",
       "Livros Históricos": "bg-amber-500",
       "Arqueologia Cristã": "bg-rose-500",
+      "Perseguição Religiosa": "bg-red-600",
+      "Liberdade Religiosa": "bg-indigo-600",
+      "Saúde e Bem-Estar": "bg-emerald-600",
+      "Alimentos Saudáveis": "bg-lime-600",
+      "Exercícios 40+": "bg-sky-600",
+      "Natureza e Meio Ambiente": "bg-teal-600",
+      "Plantas Medicinais": "bg-green-700",
+      "Mundo Cristão": "bg-cyan-600",
     };
     return colors[category] || "bg-primary";
   };

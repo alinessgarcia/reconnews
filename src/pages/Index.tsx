@@ -466,10 +466,10 @@ const Index = () => {
               <img src="/android-chrome-512x512.png" alt="ReconNews Logo" className="h-16 w-16 rounded-xl shadow-lg" />
               <div>
                 <h1 className="text-5xl font-bold tracking-tight">
-                  ReconNews
+                  ReconNews Brasil
                 </h1>
                 <p className="text-primary-foreground/90 text-lg font-medium">
-                  Descobertas cristãs, achados arqueológicos sérios e pesquisas históricas
+                  Cristianismo, arqueologia, liberdade religiosa, saúde e natureza
                 </p>
                 {/* Removido texto sobre horários/frequência de atualização conforme solicitação */}
               </div>
@@ -569,16 +569,17 @@ const Index = () => {
                 <h4 className="font-bold text-lg">ReconNews</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                Portal especializado em descobertas arqueológicas cristãs, manuscritos antigos e pesquisas históricas sérias.
+                Notícias cristãs, arqueologia, liberdade religiosa, saúde e bem‑estar, natureza e plantas medicinais.
               </p>
             </div>
             <div>
               <h4 className="font-semibold text-sm mb-3">COBERTURA</h4>
               <ul className="text-sm text-muted-foreground space-y-2">
-                <li>✓ Descobertas Arqueológicas</li>
-                <li>✓ Manuscritos e Documentos</li>
-                <li>✓ Cidades e Personagens Bíblicos</li>
-                <li>✓ Pesquisadores Renomados</li>
+                <li>✓ Arqueologia Bíblica</li>
+                <li>✓ Liberdade e Perseguição Religiosa</li>
+                <li>✓ Saúde, Bem‑Estar e Alimentos</li>
+                <li>✓ Dicas de Exercícios 40+</li>
+                <li>✓ Natureza e Plantas Medicinais</li>
               </ul>
             </div>
           </div>

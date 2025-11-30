@@ -530,25 +530,31 @@ Deno.serve(async (req) => {
     // Buscar Google News para termos específicos
     console.log('🔍 Buscando no Google News...');
     
-    const queries = [
-      // Núcleo do tema
+  const queries = [
       { term: 'arqueologia bíblica', category: 'Arqueologia Bíblica' },
       { term: 'descoberta arqueológica Israel', category: 'Descobertas Arqueológicas' },
       { term: 'manuscritos antigos bíblia', category: 'Manuscritos e Documentos' },
       { term: 'Mar Morto manuscritos descoberta', category: 'Manuscritos e Documentos' },
-      // Cidades e sítios arqueológicos relevantes
       { term: 'escavações Jerusalém Cidade de David', category: 'Arqueologia de Jerusalém' },
       { term: 'Tel Hazor escavações', category: 'Cidades e Personagens Bíblicos' },
       { term: 'Tel Lachish escavações', category: 'Cidades e Personagens Bíblicos' },
       { term: 'Tel Dan estela descoberta', category: 'Cidades e Personagens Bíblicos' },
       { term: 'Masada descoberta arqueológica', category: 'Cidades e Personagens Bíblicos' },
-      // Inscrições e documentos
       { term: 'inscrições hebraico aramaico bíblia achado', category: 'Manuscritos e Documentos' },
       { term: 'papiros bíblicos pergaminhos descoberta', category: 'Manuscritos e Documentos' },
-      // Pesquisadores e estudos
       { term: 'Israel Finkelstein arqueologia bíblica', category: 'Pesquisadores Renomados' },
       { term: 'William Dever arqueologia bíblica', category: 'Pesquisadores Renomados' },
       { term: 'Yigael Yadin descoberta arqueológica', category: 'Pesquisadores Renomados' },
+      { term: 'perseguição religiosa cristãos Brasil', category: 'Perseguição Religiosa' },
+      { term: 'liberdade religiosa leis cristãos Brasil', category: 'Liberdade Religiosa' },
+      { term: 'leis que afetam doutrina evangélica Brasil', category: 'Liberdade Religiosa' },
+      { term: 'saúde bem estar estudos alimentação saudável Brasil', category: 'Saúde e Bem-Estar' },
+      { term: 'alimentos saudáveis comprovados estudo Brasil', category: 'Alimentos Saudáveis' },
+      { term: 'exercícios acima de 40 anos Brasil', category: 'Exercícios 40+' },
+      { term: 'dicas de saúde para maiores de 40 Brasil', category: 'Exercícios 40+' },
+      { term: 'natureza conservação Brasil descobertas', category: 'Natureza e Meio Ambiente' },
+      { term: 'plantas medicinais estudos Brasil', category: 'Plantas Medicinais' },
+      { term: 'mundo cristão Brasil notícias', category: 'Mundo Cristão' },
     ];
 
     for (const { term, category } of queries) {
