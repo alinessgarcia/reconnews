@@ -65,7 +65,7 @@ const Index = () => {
         .select("*")
         .order("published_at", { ascending: false })
         .order("scraped_at", { ascending: false })
-        .limit(200);
+        .limit(300);
 
       // Filtros server-side para facetas acadêmicas
       if (selectedRegion) {
