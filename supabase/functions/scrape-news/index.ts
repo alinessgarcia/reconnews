@@ -625,8 +625,14 @@ Deno.serve(async (req) => {
           return false;
         }
         const countryOnly = (Deno.env.get('RECON_COUNTRY_ONLY') || '').toUpperCase();
+        const tldWhitelist = (Deno.env.get('RECON_TLD_WHITELIST') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+        const allowedHosts = (Deno.env.get('RECON_ALLOWED_HOSTS') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
         if (countryOnly === 'BR') {
-          if (!(host.endsWith('.br'))) {
+          if (!(host.endsWith('.br') || allowedHosts.includes(host))) {
+            return false;
+          }
+        } else if (tldWhitelist.length > 0) {
+          if (!(tldWhitelist.some(suf => host.endsWith(suf)) || allowedHosts.includes(host))) {
             return false;
           }
         }

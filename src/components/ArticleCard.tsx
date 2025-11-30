@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,7 +44,9 @@ export const ArticleCard = ({
   // Por padrão, segue o modo global; se o usuário alternar no popup, usamos o local
   const [localMode, setLocalMode] = useState<"auto" | "pt" | "original" | null>(null);
   const effectiveMode = localMode ?? translationMode;
-  const hasTranslation = Boolean(titlePt || descriptionPt || fullDescriptionPt);
+  const [clientTitlePt, setClientTitlePt] = useState<string | undefined>(undefined);
+  const [clientDescPt, setClientDescPt] = useState<string | undefined>(undefined);
+  const hasTranslation = Boolean(titlePt || descriptionPt || fullDescriptionPt || clientTitlePt || clientDescPt);
   const formattedDate = publishedAt
     ? format(new Date(publishedAt), "dd 'de' MMMM, yyyy", { locale: ptBR })
     : null;
@@ -57,8 +59,8 @@ export const ArticleCard = ({
     return (pt && !isInvalidTranslation(pt)) ? pt : (original ?? "");
   };
 
-  const displayTitle = decodeHTML(pickByMode((titlePt && !isInvalidTranslation(titlePt)) ? titlePt : undefined, title));
-  const rawDescription = pickByMode((descriptionPt && !isInvalidTranslation(descriptionPt)) ? descriptionPt : undefined, description);
+  const displayTitle = decodeHTML(pickByMode(((titlePt && !isInvalidTranslation(titlePt)) ? titlePt : clientTitlePt), title));
+  const rawDescription = pickByMode(((descriptionPt && !isInvalidTranslation(descriptionPt)) ? descriptionPt : clientDescPt), description);
   const sanitized = sanitizeSummary(rawDescription);
   // Fallback: se a sanitização remover tudo, use o texto bruto para não ficar sem resumo
   const displayDescription = sanitized && sanitized.length > 0 ? sanitized : (rawDescription || undefined);
@@ -71,7 +73,30 @@ export const ArticleCard = ({
   // Usa proxy público para evitar bloqueios de hotlink sem usar Storage
   const proxiedImage = imageUrl ? toProxyImage(imageUrl, { width: 800, height: 450, fit: 'cover', output: 'webp', dpr: 2 }) : undefined;
 
-  // Sem tradução cliente: apenas conteúdo traduzido vindo do backend
+  useEffect(() => {
+    const need = effectiveMode === 'pt' && !(titlePt || descriptionPt) && (title || description);
+    if (!need) return;
+    const translate = async (text: string) => {
+      try {
+        const res = await fetch('https://libretranslate.com/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ q: text, source: 'auto', target: 'pt', format: 'text' })
+        });
+        if (!res.ok) return text;
+        const data = await res.json();
+        const t = data?.translatedText || text;
+        if (isInvalidTranslation(t)) return text;
+        return t;
+      } catch {
+        return text;
+      }
+    };
+    (async () => {
+      if (title) setClientTitlePt(await translate(title));
+      if (description) setClientDescPt(await translate(description));
+    })();
+  }, [effectiveMode, title, description, titlePt, descriptionPt]);
 
   const getCategoryColor = (category?: string) => {
     if (!category) return "bg-muted";

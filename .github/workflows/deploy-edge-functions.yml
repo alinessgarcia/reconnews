@@ -50,6 +50,8 @@ jobs:
             RECON_FREE_API_URL="${{ secrets.RECON_FREE_API_URL }}" \
             RECON_FREE_API_KEY="${{ secrets.RECON_FREE_API_KEY }}" \
             RECON_FREE_API_PROVIDER="${{ secrets.RECON_FREE_API_PROVIDER }}"
+            RECON_TLD_WHITELIST="${{ secrets.RECON_TLD_WHITELIST }}" \
+            RECON_ALLOWED_HOSTS="${{ secrets.RECON_ALLOWED_HOSTS }}"
 
       - name: Deploy scrape-news
         run: supabase functions deploy scrape-news
