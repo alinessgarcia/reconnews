@@ -48,7 +48,8 @@ jobs:
             # Restringir a conteúdo brasileiro quando desejado (default BR se não definido)
             RECON_COUNTRY_ONLY="${{ secrets.RECON_COUNTRY_ONLY || 'BR' }}" \
             RECON_FREE_API_URL="${{ secrets.RECON_FREE_API_URL }}" \
-            RECON_FREE_API_KEY="${{ secrets.RECON_FREE_API_KEY }}"
+            RECON_FREE_API_KEY="${{ secrets.RECON_FREE_API_KEY }}" \
+            RECON_FREE_API_PROVIDER="${{ secrets.RECON_FREE_API_PROVIDER }}"
 
       - name: Deploy scrape-news
         run: supabase functions deploy scrape-news

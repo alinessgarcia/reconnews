@@ -139,23 +139,24 @@ async function translateViaFreeAPI(text: string): Promise<{ translated: string; 
   const url = Deno.env.get('RECON_FREE_API_URL') || '';
   if (!url) return null;
   const key = Deno.env.get('RECON_FREE_API_KEY') || '';
+  const providerType = (Deno.env.get('RECON_FREE_API_PROVIDER') || '').toLowerCase();
   const s = (text || '').toLowerCase();
   const isPtLike = /[áéíóúâêîôûãõç]/.test(s) || /ção| que | de | para | com /.test(s);
   const src = isPtLike ? 'pt' : 'en';
   try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(key ? { 'Authorization': `Bearer ${key}` } : {}),
-        'User-Agent': 'ReconNews-Bot/1.0'
-      },
-      body: JSON.stringify({ text, source_language: src, target_language: 'pt-BR' }),
-      signal: AbortSignal.timeout(12000)
-    });
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'ReconNews-Bot/1.0'
+    };
+    if (key && providerType !== 'libretranslate') headers['Authorization'] = `Bearer ${key}`;
+    const body = providerType === 'libretranslate'
+      ? JSON.stringify({ q: text, source: src, target: 'pt', format: 'text', api_key: key || undefined })
+      : JSON.stringify({ text, source_language: src, target_language: 'pt-BR' });
+
+    const res = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(12000) });
     if (!res.ok) return null;
     const data = await res.json();
-    const translated = data?.translated_text || data?.translation || '';
+    const translated = data?.translated_text || data?.translation || data?.translatedText || '';
     if (isInvalidTranslation(translated)) return null;
     return translated ? { translated, provider: 'freeapi' } : null;
   } catch {
