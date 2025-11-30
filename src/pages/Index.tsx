@@ -55,7 +55,7 @@ const Index = () => {
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
-  const ITEMS_PER_PAGE = 12;
+  const ITEMS_PER_PAGE = 18;
 
   const fetchArticles = async () => {
     setLoading(true);

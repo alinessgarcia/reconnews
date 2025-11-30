@@ -532,6 +532,22 @@ const BLOCKED_HOSTS = new Set(
   (Deno.env.get('RECON_BLOCKED_HOSTS')?.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)) ?? []
 );
 
+// Hosts internacionais permitidos por padrão quando a política é BR, para fontes temáticas confiáveis
+const DEFAULT_ALLOWED_HOSTS = [
+  'christianitytoday.com',
+  'thegospelcoalition.org',
+  'christianpost.com',
+  'biblicalarchaeology.org',
+  'asorblog.org',
+  'heritagedaily.com',
+  'arkeonews.net',
+  'popular-archaeology.com',
+  'ancient-origins.net',
+  'sciencedaily.com',
+  'phys.org',
+  'theguardian.com',
+];
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -586,6 +602,14 @@ Deno.serve(async (req) => {
       { term: 'natureza conservação Brasil descobertas', category: 'Natureza e Meio Ambiente' },
       { term: 'plantas medicinais estudos Brasil', category: 'Plantas Medicinais' },
       { term: 'mundo cristão Brasil notícias', category: 'Mundo Cristão' },
+      // Consultas internacionais (EN/PT) para aumentar cobertura global
+      { term: 'bible archaeology discovery', category: 'Arqueologia Bíblica' },
+      { term: 'ancient manuscripts discovery', category: 'Manuscritos e Documentos' },
+      { term: 'Christian persecution', category: 'Perseguição Religiosa' },
+      { term: 'religious liberty Christian law', category: 'Liberdade Religiosa' },
+      { term: 'healthy foods study benefits', category: 'Alimentos Saudáveis' },
+      { term: 'exercise over 40 health', category: 'Exercícios 40+' },
+      { term: 'medicinal plants study', category: 'Plantas Medicinais' },
     ];
 
     for (const { term, category } of queries) {
@@ -626,7 +650,8 @@ Deno.serve(async (req) => {
         }
         const countryOnly = (Deno.env.get('RECON_COUNTRY_ONLY') || '').toUpperCase();
         const tldWhitelist = (Deno.env.get('RECON_TLD_WHITELIST') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-        const allowedHosts = (Deno.env.get('RECON_ALLOWED_HOSTS') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+        let allowedHosts = (Deno.env.get('RECON_ALLOWED_HOSTS') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+        if (allowedHosts.length === 0) allowedHosts = DEFAULT_ALLOWED_HOSTS;
         if (countryOnly === 'BR') {
           if (!(host.endsWith('.br') || allowedHosts.includes(host))) {
             return false;
