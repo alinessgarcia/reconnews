@@ -11,6 +11,9 @@ on:
   
   # Permite execução manual
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy Edge Functions"]
+    types: ["completed"]
 
 jobs:
   scrape:
@@ -18,7 +21,7 @@ jobs:
     
     timeout-minutes: 10
     concurrency:
-      group: news-scraper
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
       cancel-in-progress: false
     steps:
       - name: Execute News Scraper with retries
