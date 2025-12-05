@@ -60,12 +60,14 @@ const Index = () => {
   const fetchArticles = async () => {
     setLoading(true);
     try {
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       let query = supabase
         .from("articles")
         .select("*")
-        .order("published_at", { ascending: false })
+        .gte("scraped_at", cutoff)
         .order("scraped_at", { ascending: false })
-        .limit(300);
+        .order("published_at", { ascending: false })
+        .limit(500);
 
       // Filtros server-side para facetas acadêmicas
       if (selectedRegion) {
