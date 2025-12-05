@@ -30,28 +30,28 @@ jobs:
           TOKEN: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
         run: |
           echo "Calling $FUNC_URL"
-          attempt=1
-          max=3
-          status=0
-          while [ $attempt -le $max ]; do
-            echo "Attempt ${attempt}/${max}"
-            http_code=$(curl -sS -w "%{http_code}" -o output.json -X POST \
-              -H "Authorization: Bearer ${TOKEN}" \
-              -H "Content-Type: application/json" \
-              -d '{}' \
-              "$FUNC_URL" || true)
-            status=$?
-            echo "HTTP: ${http_code}"
-            if [ "$http_code" = "200" ]; then
-              echo "Success"
-              break
-            fi
-            echo "Retrying in 60s..."
-            sleep 60
-            attempt=$((attempt+1))
+          batches=(q1 q2 q3 q4 q5 q6 rss)
+          for b in "${batches[@]}"; do
+            echo "Batch: $b"
+            attempt=1
+            max=2
+            while [ $attempt -le $max ]; do
+              echo "Attempt ${attempt}/${max}"
+              http_code=$(curl -sS -w "%{http_code}" -o output.json -X POST \
+                -H "Authorization: Bearer ${TOKEN}" \
+                -H "Content-Type: application/json" \
+                -d "{\"batch\":\"$b\"}" \
+                "$FUNC_URL" || true)
+              echo "HTTP: ${http_code}"
+              cat output.json || true
+              if [ "$http_code" = "200" ]; then
+                break
+              fi
+              echo "Retrying batch $b in 30s..."
+              sleep 30
+              attempt=$((attempt+1))
+            done
           done
-          echo "Response body:"
-          cat output.json || true
           exit 0
       - name: Summarize
         if: always()

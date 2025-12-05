@@ -558,6 +558,16 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY') ?? Deno.env.get('RECON_SERVICE_ROLE_KEY')!;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    let batch: string | null = null;
+    try {
+      const body = await req.json();
+      batch = (body?.batch ?? null);
+    } catch {}
+    if (!batch) {
+      const u = new URL(req.url);
+      batch = u.searchParams.get('batch');
+    }
+    const startedAt = Date.now();
 
     // Limpar notícias antigas antes de coletar novas
     console.log('🧹 Limpando notícias antigas...');
@@ -612,7 +622,20 @@ Deno.serve(async (req) => {
       { term: 'medicinal plants study', category: 'Plantas Medicinais' },
     ];
 
-    for (const { term, category } of queries) {
+    let selectedQueries = queries;
+    const totalQ = queries.length;
+    const sliceSize = 5;
+    const slices: Array<[number, number]> = [];
+    for (let i = 0; i < totalQ; i += sliceSize) slices.push([i, Math.min(i + sliceSize, totalQ)]);
+    const enStart = queries.findIndex(q => q.term === 'bible archaeology discovery');
+    const enSlice: [number, number] = enStart >= 0 ? [enStart, totalQ] : [totalQ, totalQ];
+    if (batch === 'q1') selectedQueries = queries.slice(...(slices[0] || [0, totalQ]));
+    else if (batch === 'q2') selectedQueries = queries.slice(...(slices[1] || [0, totalQ]));
+    else if (batch === 'q3') selectedQueries = queries.slice(...(slices[2] || [0, totalQ]));
+    else if (batch === 'q4') selectedQueries = queries.slice(...(slices[3] || [0, totalQ]));
+    else if (batch === 'q5') selectedQueries = queries.slice(...(slices[4] || [0, totalQ]));
+    else if (batch === 'q6') selectedQueries = queries.slice(...enSlice);
+    for (const { term, category } of selectedQueries) {
       const articles = await scrapeGoogleNews(term, category);
       allArticles.push(...articles);
       await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limiting
@@ -620,7 +643,8 @@ Deno.serve(async (req) => {
 
     // Buscar RSS feeds especializados (filtrados pela política editorial)
     console.log('\n📚 Buscando feeds RSS especializados (política editorial ativa)...');
-    for (const feed of RSS_FEEDS) {
+    const selectedFeeds = batch === 'rss' ? RSS_FEEDS : [];
+    for (const feed of selectedFeeds) {
       if (!FEEDS_ALLOWLIST.has(feed.source)) {
         console.log(`  ⏭️ Ignorando feed não permitido pela política: ${feed.source}`);
         continue;
@@ -759,6 +783,8 @@ Deno.serve(async (req) => {
         uniqueArticles: uniqueArticles.length,
         newArticles,
         timestamp: new Date().toISOString(),
+        durationMs: Date.now() - startedAt,
+        batch: batch || 'all'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
