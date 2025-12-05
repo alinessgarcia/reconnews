@@ -14,6 +14,8 @@ on:
   workflow_run:
     workflows: ["Deploy Edge Functions"]
     types: ["completed"]
+  push:
+    branches: [ main ]
 
 jobs:
   scrape:
