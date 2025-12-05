@@ -27,13 +27,24 @@ export function decodeHTML(text: string): string {
 // Limpa resumos removendo trechos como "The post ..." e excesso de espaços
 export function sanitizeSummary(text: string): string {
   const decoded = decodeHTML(text);
-  return decoded
+  let s = decoded
     // Remove quaisquer tags HTML remanescentes (ex.: <p>, </p>, <strong>, etc.)
     .replace(/<[^>]*>/g, ' ')
-    .replace(/The post[\s\S]*$/i, '')
-    .replace(/•?\s*Leia mais.*$/i, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+    .replace(/The post[\s\S]*$/i, ' ')
+    .replace(/•?\s*Leia mais.*$/i, ' ');
+  const noise = [
+    'Doar', 'Renovar', 'Inscrever-se', 'Revista', 'Biblioteca', 'Viagens/Estudos', 'Loja', 'Sobre', 'Contato',
+    'Facebook', 'twitter', 'rss', 'Tags:', 'Related Posts', 'By:', 'newsletter', 'Subscreva hoje', 'Torne-se um membro',
+    'All-Access', 'Saiba mais', 'FREE ebook', 'FREE e-book', 'Registe-se', 'O seu endereço de e-mail não será publicado',
+    'campos obrigatórios', 'Comente', 'Comentários'
+  ];
+  const pattern = new RegExp(noise.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gi');
+  s = s.replace(pattern, ' ');
+  s = s.replace(/\s+/g, ' ').trim();
+  const sentences = s.split(/(?<=[.!?])\s+/);
+  const filtered = sentences.filter(x => x.length > 30 && !pattern.test(x));
+  const out = (filtered.length > 0 ? filtered : sentences).slice(0, 8).join(' ');
+  return out.trim();
 }
 
 // ===== Taxonomia e classificação (front-end) =====

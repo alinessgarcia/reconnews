@@ -730,7 +730,7 @@ Deno.serve(async (req) => {
             if (content) {
               const tFull = await translateTextToPtWithFallback(content);
               if (tFull && !isInvalidTranslation(tFull.translated)) {
-                extended_summary_pt = tFull.translated;
+                extended_summary_pt = refinePtSummary(tFull.translated).substring(0, 2500);
                 translation_provider = tFull.provider;
               }
             }
@@ -814,4 +814,23 @@ function isInvalidTranslation(text: string | null | undefined): boolean {
     s.includes("500 chars") ||
     s.includes("some may have no content")
   );
+}
+
+function refinePtSummary(text: string): string {
+  let t = (text || '').replace(/<[^>]*>/g, ' ');
+  const noise = [
+    'doar', 'renovar', 'inscrever-se', 'revista', 'biblioteca', 'viagens/estudos', 'loja', 'sobre', 'contato',
+    'facebook', 'twitter', 'rss', 'tags:', 'related posts', 'by:', 'newsletter', 'subscreva hoje', 'torne-se um membro',
+    'all-access', 'saiba mais', 'free ebook', 'free e-book', 'registe-se', 'o seu endereço de e-mail não será publicado',
+    'campos obrigatórios', 'comente', 'comentários'
+  ];
+  const pattern = new RegExp(noise.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gi');
+  t = t.replace(pattern, ' ');
+  t = t.replace(/\s+\d+\s+\d+\s+\d+(\s+\d+)?(\s+\d+)?/g, ' ');
+  t = t.replace(/The post[\s\S]*$/i, ' ').replace(/Leia mais[\s\S]*$/i, ' ');
+  t = t.replace(/\s+/g, ' ').trim();
+  const sentences = t.split(/(?<=[.!?])\s+/).filter(s => s.length > 40 && s.length < 400);
+  const filtered = sentences.filter(s => !pattern.test(s));
+  const selected = (filtered.length > 0 ? filtered : sentences).slice(0, 12);
+  return selected.join(' ');
 }
