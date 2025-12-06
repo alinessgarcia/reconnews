@@ -558,6 +558,10 @@ const DEFAULT_ALLOWED_HOSTS = [
   'archaeology.co.uk',
   'nature.com',
   'bbc.com',
+  'discovermagazine.com',
+  'history.com',
+  'newyorker.com',
+  'haaretz.com',
 ];
 
 Deno.serve(async (req) => {
