@@ -160,10 +160,13 @@ async function translateViaMyMemory(text: string): Promise<{ translated: string;
 }
 
 async function translateViaFreeAPI(text: string): Promise<{ translated: string; provider: string } | null> {
-  const url = Deno.env.get('RECON_FREE_API_URL') || '';
-  if (!url) return null;
+  let url = Deno.env.get('RECON_FREE_API_URL') || '';
   const key = Deno.env.get('RECON_FREE_API_KEY') || '';
-  const providerType = (Deno.env.get('RECON_FREE_API_PROVIDER') || '').toLowerCase();
+  let providerType = (Deno.env.get('RECON_FREE_API_PROVIDER') || '').toLowerCase();
+  if (!url) {
+    url = 'https://libretranslate.com/translate';
+    providerType = 'libretranslate';
+  }
   const s = (text || '').toLowerCase();
   const isPtLike = /[áéíóúâêîôûãõç]/.test(s) || /ção| que | de | para | com /.test(s);
   const src = isPtLike ? 'pt' : 'en';
@@ -546,6 +549,15 @@ const DEFAULT_ALLOWED_HOSTS = [
   'sciencedaily.com',
   'phys.org',
   'theguardian.com',
+  'livescience.com',
+  'smithsonianmag.com',
+  'nationalgeographic.com',
+  'jpost.com',
+  'timesofisrael.com',
+  'iaa.gov.il',
+  'archaeology.co.uk',
+  'nature.com',
+  'bbc.com',
 ];
 
 Deno.serve(async (req) => {
@@ -620,6 +632,10 @@ Deno.serve(async (req) => {
       { term: 'healthy foods study benefits', category: 'Alimentos Saudáveis' },
       { term: 'exercise over 40 health', category: 'Exercícios 40+' },
       { term: 'medicinal plants study', category: 'Plantas Medicinais' },
+      { term: 'Israel Antiquities Authority discovery', category: 'Descobertas Arqueológicas' },
+      { term: 'Dead Sea Scrolls discovery', category: 'Manuscritos e Documentos' },
+      { term: 'biblical inscription discovery', category: 'Manuscritos e Documentos' },
+      { term: 'Jerusalem archaeology discovery', category: 'Arqueologia de Jerusalém' },
     ];
 
     let selectedQueries = queries;
