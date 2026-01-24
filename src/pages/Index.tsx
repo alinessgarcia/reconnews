@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ArticleCard } from "@/components/ArticleCard";
 // Substituído por controles compactos de Select no painel de filtros
@@ -57,7 +57,7 @@ const Index = () => {
   
   const ITEMS_PER_PAGE = 18;
 
-  const fetchArticles = async () => {
+  const fetchArticles = useCallback(async () => {
     setLoading(true);
     try {
       const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -95,14 +95,14 @@ const Index = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedRegion, selectedEvidence, selectedTheme, toast]);
 
   // Recarrega artigos quando filtros acadêmicos mudarem para aplicar server-side
   useEffect(() => {
     fetchArticles();
     // Resetar paginação ao alterar filtros
     setCurrentPage(1);
-  }, [selectedRegion, selectedEvidence, selectedTheme]);
+  }, [fetchArticles]);
 
   // Coletas e retranslações são 100% automatizadas via GitHub Actions; UI não oferece ações manuais.
 

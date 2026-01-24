@@ -38,7 +38,7 @@ async function checkRobotsTxt(url: string): Promise<boolean> {
 }
 
 async function fetchWithRetry(url: string, init: RequestInit = {}, attempts = 2, baseTimeoutMs = 10000, backoffMs = 1500): Promise<Response> {
-  let lastError: any = null;
+  let lastError: unknown = null;
   for (let i = 1; i <= attempts; i++) {
     try {
       const res = await fetch(url, {
@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
       if (body && typeof body.limit === 'number') {
         limit = Math.max(1, Math.min(parseInt(String(body.limit), 10) || limit, 200));
       }
-    } catch {}
+    } catch { void 0; }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? Deno.env.get('PROJECT_URL') ?? Deno.env.get('RECON_SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY') ?? Deno.env.get('RECON_SERVICE_ROLE_KEY')!;
@@ -227,7 +227,7 @@ Deno.serve(async (req) => {
 
     for (const a of articles || []) {
       processed++;
-      const patch: Record<string, any> = {};
+      const patch: Record<string, string> = {};
 
       if ((!a.title_pt || isInvalidTranslation(a.title_pt)) && a.title) {
         const t = await translateTextToPtWithFallback(a.title);
@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
           const pageRes = await fetchWithRetry(a.url, { headers: { 'User-Agent': 'ReconNews-Bot/1.0' } }, 2, 12000, 2000);
           if (pageRes.ok) {
             const html = await pageRes.text();
-            let content = extractMainContent(html).substring(0, 8000);
+            const content = extractMainContent(html).substring(0, 8000);
             if (content && (!a.extended_summary_pt || isInvalidTranslation(a.extended_summary_pt))) {
               const t = await translateTextToPtWithFallback(content);
               if (t && !isInvalidTranslation(t.translated)) {

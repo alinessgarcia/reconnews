@@ -55,7 +55,7 @@ async function checkRobotsTxt(url: string): Promise<boolean> {
 
 // Fetch com retry e backoff para robustez
 async function fetchWithRetry(url: string, init: RequestInit = {}, attempts = 3, baseTimeoutMs = 10000, backoffMs = 1500): Promise<Response> {
-  let lastError: any = null;
+  let lastError: unknown = null;
   for (let i = 1; i <= attempts; i++) {
     try {
       const res = await fetch(url, {
@@ -285,7 +285,7 @@ function classifyArticle(title?: string, description?: string) {
 
 // Função auxiliar para extrair texto entre tags XML
 function extractXMLTag(xml: string, tag: string): string | null {
-  const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\/${tag}>`, 'i');
+  const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'i');
   const match = xml.match(regex);
   return match ? match[1].trim() : null;
 }
@@ -343,7 +343,8 @@ async function parseRSSFeed(url: string, source: string, category: string): Prom
     const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
     const items = xml.match(itemRegex) || [];
 
-  for (const itemXml of items.slice(0, 20)) {
+    const maxItems = 40;
+    for (const itemXml of items.slice(0, maxItems)) {
       const title = extractXMLTag(itemXml, 'title');
       let link = extractXMLTag(itemXml, 'link');
       
@@ -354,7 +355,7 @@ async function parseRSSFeed(url: string, source: string, category: string): Prom
         const u = new URL(cleanCDATA(link));
         const real = u.searchParams.get('url');
         if (real) link = real;
-      } catch {}
+      } catch { void 0; }
 
       const description = extractXMLTag(itemXml, 'description');
       const contentEncoded = extractXMLTag(itemXml, 'content:encoded');
@@ -449,10 +450,19 @@ async function parseRSSFeed(url: string, source: string, category: string): Prom
   }
 }
 
+type GoogleNewsLocaleKey = 'BR' | 'US' | 'GB';
+
+const GOOGLE_NEWS_LOCALES: Record<GoogleNewsLocaleKey, { hl: string; gl: string; ceid: string }> = {
+  BR: { hl: 'pt-BR', gl: 'BR', ceid: 'BR:pt-419' },
+  US: { hl: 'en-US', gl: 'US', ceid: 'US:en' },
+  GB: { hl: 'en-GB', gl: 'GB', ceid: 'GB:en' },
+};
+
 // Scraper para Google News via RSS
-async function scrapeGoogleNews(query: string, category: string): Promise<Article[]> {
+async function scrapeGoogleNews(query: string, category: string, locale: GoogleNewsLocaleKey): Promise<Article[]> {
   const encodedQuery = encodeURIComponent(query);
-  const url = `https://news.google.com/rss/search?q=${encodedQuery}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+  const loc = GOOGLE_NEWS_LOCALES[locale] ?? GOOGLE_NEWS_LOCALES.BR;
+  const url = `https://news.google.com/rss/search?q=${encodedQuery}&hl=${loc.hl}&gl=${loc.gl}&ceid=${loc.ceid}`;
   return parseRSSFeed(url, 'Google News', category);
 }
 
@@ -512,6 +522,41 @@ const RSS_FEEDS = [
     source: 'The Guardian – Archaeology',
     category: 'Arqueologia',
   },
+  {
+    url: 'https://www.archaeology.org/rss',
+    source: 'Archaeology Magazine (AIA)',
+    category: 'Arqueologia',
+  },
+  {
+    url: 'https://www.livescience.com/feeds/all',
+    source: 'Live Science',
+    category: 'Ciência e Descobertas',
+  },
+  {
+    url: 'https://www.smithsonianmag.com/rss/smart-news/',
+    source: 'Smithsonian – Smart News',
+    category: 'Ciência e História',
+  },
+  {
+    url: 'https://www.sciencenews.org/feed',
+    source: 'Science News',
+    category: 'Ciência e Descobertas',
+  },
+  {
+    url: 'http://feeds.bbci.co.uk/news/science_and_environment/rss.xml',
+    source: 'BBC – Science & Environment',
+    category: 'Ciência e Descobertas',
+  },
+  {
+    url: 'https://www.sciencealert.com/feed',
+    source: 'ScienceAlert',
+    category: 'Ciência e Descobertas',
+  },
+  {
+    url: 'https://www.nature.com/subjects/archaeology/rss',
+    source: 'Nature – Archaeology',
+    category: 'Achados Científicos',
+  },
 ];
 
 // Política editorial: permitir apenas fontes focadas em arqueologia, manuscritos e história bíblica
@@ -528,6 +573,13 @@ const FEEDS_ALLOWLIST = new Set(
     'ScienceDaily – Fossils & Ruins',
     'Phys.org – Archaeology & Fossils',
     'The Guardian – Archaeology',
+    'Archaeology Magazine (AIA)',
+    'Live Science',
+    'Smithsonian – Smart News',
+    'Science News',
+    'BBC – Science & Environment',
+    'ScienceAlert',
+    'Nature – Archaeology',
   ]
 );
 
@@ -562,6 +614,9 @@ const DEFAULT_ALLOWED_HOSTS = [
   'history.com',
   'newyorker.com',
   'haaretz.com',
+  'archaeology.org',
+  'sciencenews.org',
+  'sciencealert.com',
 ];
 
 Deno.serve(async (req) => {
@@ -578,7 +633,7 @@ Deno.serve(async (req) => {
     try {
       const body = await req.json();
       batch = (body?.batch ?? null);
-    } catch {}
+    } catch { void 0; }
     if (!batch) {
       const u = new URL(req.url);
       batch = u.searchParams.get('batch');
@@ -603,7 +658,7 @@ Deno.serve(async (req) => {
     // Buscar Google News para termos específicos
     console.log('🔍 Buscando no Google News...');
     
-  const queries = [
+    const queries: Array<{ term: string; category: string; locale?: GoogleNewsLocaleKey }> = [
       { term: 'arqueologia bíblica', category: 'Arqueologia Bíblica' },
       { term: 'descoberta arqueológica Israel', category: 'Descobertas Arqueológicas' },
       { term: 'manuscritos antigos bíblia', category: 'Manuscritos e Documentos' },
@@ -628,35 +683,63 @@ Deno.serve(async (req) => {
       { term: 'natureza conservação Brasil descobertas', category: 'Natureza e Meio Ambiente' },
       { term: 'plantas medicinais estudos Brasil', category: 'Plantas Medicinais' },
       { term: 'mundo cristão Brasil notícias', category: 'Mundo Cristão' },
-      // Consultas internacionais (EN/PT) para aumentar cobertura global
-      { term: 'bible archaeology discovery', category: 'Arqueologia Bíblica' },
-      { term: 'ancient manuscripts discovery', category: 'Manuscritos e Documentos' },
-      { term: 'Christian persecution', category: 'Perseguição Religiosa' },
-      { term: 'religious liberty Christian law', category: 'Liberdade Religiosa' },
-      { term: 'healthy foods study benefits', category: 'Alimentos Saudáveis' },
-      { term: 'exercise over 40 health', category: 'Exercícios 40+' },
-      { term: 'medicinal plants study', category: 'Plantas Medicinais' },
-      { term: 'Israel Antiquities Authority discovery', category: 'Descobertas Arqueológicas' },
-      { term: 'Dead Sea Scrolls discovery', category: 'Manuscritos e Documentos' },
-      { term: 'biblical inscription discovery', category: 'Manuscritos e Documentos' },
-      { term: 'Jerusalem archaeology discovery', category: 'Arqueologia de Jerusalém' },
+      { term: 'arqueologia do Oriente Próximo descobertas', category: 'Descobertas Arqueológicas' },
+      { term: 'inscrição antiga hebraico descoberta', category: 'Manuscritos e Documentos' },
+      { term: 'tabuleta cuneiforme descoberta', category: 'História Antiga' },
+      { term: 'estela antiga inscrição descoberta', category: 'História Antiga' },
+      { term: 'escavações arqueológicas Galileia', category: 'Descobertas Arqueológicas' },
+      { term: 'arqueologia bíblica Jerusalém templo', category: 'Arqueologia de Jerusalém' },
+      { term: 'Qumran manuscritos Mar Morto', category: 'Manuscritos e Documentos' },
+      { term: 'papiro antigo bíblico descoberta', category: 'Manuscritos e Documentos' },
+      { term: 'ossuário inscrição aramaico descoberta', category: 'Manuscritos e Documentos' },
+      { term: 'mosaico bizantino descoberta', category: 'História Antiga' },
+      { term: 'Igreja antiga descoberta arqueológica', category: 'Mundo Cristão' },
+      { term: 'Cristianismo primitivo descoberta arqueologia', category: 'Mundo Cristão' },
+      { term: 'Israel Antiquities Authority escavação', category: 'Descobertas Arqueológicas' },
+      { term: 'Autoridade de Antiguidades de Israel descoberta', category: 'Descobertas Arqueológicas' },
+      { term: 'descoberta arqueológica Egito inscrição', category: 'História Antiga' },
+      { term: 'descoberta arqueológica Roma antiga', category: 'História Antiga' },
+      { term: 'Patrimônio histórico descobertas arqueológicas', category: 'Descobertas Arqueológicas' },
+      { term: 'saúde estudos clínicos alimentação', category: 'Saúde e Bem-Estar' },
+      { term: 'atividade física longevidade estudo', category: 'Exercícios 40+' },
+      { term: 'plantas medicinais evidência científica', category: 'Plantas Medicinais' },
+      { term: 'conservação ambiental descoberta científica', category: 'Natureza e Meio Ambiente' },
+      { term: 'liberdade religiosa cristãos tribunal', category: 'Liberdade Religiosa' },
+      { term: 'perseguição cristãos relatório', category: 'Perseguição Religiosa' },
+      { term: 'ataque igreja cristã perseguição', category: 'Perseguição Religiosa' },
+      { term: 'missões cristãs perseguição', category: 'Perseguição Religiosa' },
+      { term: 'política religiosa liberdade de culto', category: 'Liberdade Religiosa' },
+      { term: 'bible archaeology discovery', category: 'Arqueologia Bíblica', locale: 'US' },
+      { term: 'biblical archaeology Jerusalem excavation', category: 'Arqueologia de Jerusalém', locale: 'US' },
+      { term: 'Dead Sea Scrolls discovery', category: 'Manuscritos e Documentos', locale: 'US' },
+      { term: 'ancient manuscript discovery papyrus', category: 'Manuscritos e Documentos', locale: 'US' },
+      { term: 'biblical inscription discovery', category: 'Manuscritos e Documentos', locale: 'US' },
+      { term: 'Israel Antiquities Authority discovery', category: 'Descobertas Arqueológicas', locale: 'US' },
+      { term: 'Second Temple period archaeology', category: 'Arqueologia Bíblica', locale: 'US' },
+      { term: 'Canaanite archaeology discovery', category: 'História Antiga', locale: 'US' },
+      { term: 'Assyrian inscription discovery', category: 'História Antiga', locale: 'US' },
+      { term: 'ancient Near East archaeology discovery', category: 'Descobertas Arqueológicas', locale: 'US' },
+      { term: 'early Christianity archaeology discovery', category: 'Mundo Cristão', locale: 'US' },
+      { term: 'Christian persecution report', category: 'Perseguição Religiosa', locale: 'US' },
+      { term: 'religious liberty court ruling', category: 'Liberdade Religiosa', locale: 'US' },
+      { term: 'healthy foods study benefits', category: 'Alimentos Saudáveis', locale: 'US' },
+      { term: 'exercise over 40 health', category: 'Exercícios 40+', locale: 'US' },
+      { term: 'medicinal plants study', category: 'Plantas Medicinais', locale: 'US' },
+      { term: 'archaeology discovery Israel site:bbc.com', category: 'Descobertas Arqueológicas', locale: 'US' },
     ];
 
     let selectedQueries = queries;
     const totalQ = queries.length;
-    const sliceSize = 5;
-    const slices: Array<[number, number]> = [];
-    for (let i = 0; i < totalQ; i += sliceSize) slices.push([i, Math.min(i + sliceSize, totalQ)]);
-    const enStart = queries.findIndex(q => q.term === 'bible archaeology discovery');
-    const enSlice: [number, number] = enStart >= 0 ? [enStart, totalQ] : [totalQ, totalQ];
-    if (batch === 'q1') selectedQueries = queries.slice(...(slices[0] || [0, totalQ]));
-    else if (batch === 'q2') selectedQueries = queries.slice(...(slices[1] || [0, totalQ]));
-    else if (batch === 'q3') selectedQueries = queries.slice(...(slices[2] || [0, totalQ]));
-    else if (batch === 'q4') selectedQueries = queries.slice(...(slices[3] || [0, totalQ]));
-    else if (batch === 'q5') selectedQueries = queries.slice(...(slices[4] || [0, totalQ]));
-    else if (batch === 'q6') selectedQueries = queries.slice(...enSlice);
-    for (const { term, category } of selectedQueries) {
-      const articles = await scrapeGoogleNews(term, category);
+    const sliceSize = 6;
+    const m = (batch || '').match(/^q(\d+)$/i);
+    if (m) {
+      const idx = Math.max(0, parseInt(m[1], 10) - 1);
+      const start = idx * sliceSize;
+      const end = Math.min(start + sliceSize, totalQ);
+      selectedQueries = queries.slice(start, end);
+    }
+    for (const { term, category, locale } of selectedQueries) {
+      const articles = await scrapeGoogleNews(term, category, locale ?? 'BR');
       allArticles.push(...articles);
       await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limiting
     }
@@ -746,7 +829,7 @@ Deno.serve(async (req) => {
           const pageRes = await fetchWithRetry(article.url, { headers: { 'User-Agent': 'ReconNews-Bot/1.0' } }, 2, 12000, 2000);
           if (pageRes.ok) {
             const html = await pageRes.text();
-            let content = extractMainContent(html).substring(0, 8000);
+            const content = extractMainContent(html).substring(0, 8000);
             if (content) {
               const tFull = await translateTextToPtWithFallback(content);
               if (tFull && !isInvalidTranslation(tFull.translated)) {
