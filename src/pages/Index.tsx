@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseConfigError } from "@/integrations/supabase/client";
 import { ArticleCard } from "@/components/ArticleCard";
 // Substituído por controles compactos de Select no painel de filtros
 // StatsBar removido conforme solicitação: dados visíveis não relevantes ao público
@@ -54,11 +54,17 @@ const Index = () => {
   const [translationMode, setTranslationMode] = useState<"auto" | "pt" | "original">("pt");
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const configError = supabaseConfigError;
   
   const ITEMS_PER_PAGE = 18;
 
   const fetchArticles = useCallback(async () => {
     setLoading(true);
+    if (!supabase) {
+      setArticles([]);
+      setLoading(false);
+      return;
+    }
     try {
       const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       let query = supabase
@@ -103,6 +109,15 @@ const Index = () => {
     // Resetar paginação ao alterar filtros
     setCurrentPage(1);
   }, [fetchArticles]);
+
+  useEffect(() => {
+    if (!configError) return;
+    toast({
+      title: "Configuração do site incompleta",
+      description: configError,
+      variant: "destructive",
+    });
+  }, [configError, toast]);
 
   // Coletas e retranslações são 100% automatizadas via GitHub Actions; UI não oferece ações manuais.
 
@@ -520,10 +535,11 @@ const Index = () => {
                 Nenhuma notícia encontrada
               </h3>
               <p className="text-muted-foreground max-w-md mx-auto">
-                {searchQuery || selectedCategory || selectedSource || selectedRegion || selectedEvidence || selectedTheme
-                  ? "Tente ajustar seus filtros ou busca"
-                  : "As notícias são coletadas automaticamente a partir de fontes públicas"
-                }
+                {configError
+                  ? "O site está online, mas sem conexão com o banco de notícias. Ajuste as variáveis de ambiente no deploy."
+                  : searchQuery || selectedCategory || selectedSource || selectedRegion || selectedEvidence || selectedTheme
+                    ? "Tente ajustar seus filtros ou busca"
+                    : "As notícias são coletadas automaticamente a partir de fontes públicas"}
               </p>
             </div>
           ) : (
