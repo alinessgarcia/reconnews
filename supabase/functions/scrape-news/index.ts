@@ -773,6 +773,7 @@ Deno.serve(async (req) => {
     console.log(`\n📊 Total de artigos encontrados: ${totalArticles}`);
 
     // Remover duplicatas baseado na URL
+    const normalizedBlockedHosts = normalizeHostList([...BLOCKED_HOSTS]);
     const uniqueArticles = allArticles.reduce((acc, article) => {
       if (!acc.find(a => a.url === article.url)) {
         acc.push(article);
@@ -783,7 +784,7 @@ Deno.serve(async (req) => {
     .filter(a => {
       try {
         const host = new URL(a.url).hostname.toLowerCase();
-        if (BLOCKED_HOSTS.has(host)) {
+        if (isHostAllowed(host, normalizedBlockedHosts)) {
           console.log(`  🚫 Bloqueado por domínio: ${host}`);
           return false;
         }
