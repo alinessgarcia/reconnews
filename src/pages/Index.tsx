@@ -50,6 +50,7 @@ const Index = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [timeWindowDays, setTimeWindowDays] = useState(1);
   // Modo de tradução global: auto (usa PT se disponível), pt (força PT-BR), original (força idioma original)
   const [translationMode, setTranslationMode] = useState<"auto" | "pt" | "original">("pt");
   const isMobile = useIsMobile();
@@ -66,31 +67,47 @@ const Index = () => {
       return;
     }
     try {
-      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      let query = supabase
-        .from("articles")
-        .select("*")
-        .gte("scraped_at", cutoff)
-        .order("scraped_at", { ascending: false })
-        .order("published_at", { ascending: false })
-        .limit(500);
+      const runFetch = async (days: number) => {
+        const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+        let query = supabase
+          .from("articles")
+          .select("*")
+          .gte("scraped_at", cutoff)
+          .order("scraped_at", { ascending: false })
+          .order("published_at", { ascending: false })
+          .limit(500);
 
-      // Filtros server-side para facetas acadêmicas
-      if (selectedRegion) {
-        query = query.eq("region", selectedRegion);
+        if (selectedRegion) {
+          query = query.eq("region", selectedRegion);
+        }
+        if (selectedEvidence) {
+          query = query.eq("evidence_type", selectedEvidence);
+        }
+        if (selectedTheme) {
+          query = query.eq("theme", selectedTheme);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
+        return data || [];
+      };
+
+      const d1 = await runFetch(1);
+      if (d1.length < 30) {
+        const d7 = await runFetch(7);
+        if (d7.length > d1.length) {
+          setTimeWindowDays(7);
+          setArticles(d7);
+        } else {
+          setTimeWindowDays(1);
+          setArticles(d1);
+        }
+      } else {
+        setTimeWindowDays(1);
+        setArticles(d1);
       }
-      if (selectedEvidence) {
-        query = query.eq("evidence_type", selectedEvidence);
-      }
-      if (selectedTheme) {
-        query = query.eq("theme", selectedTheme);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      setArticles(data || []);
     } catch (error) {
       console.error("Erro ao buscar artigos:", error);
       toast({
@@ -508,7 +525,7 @@ const Index = () => {
           
           <div className="flex items-center justify-between mt-4">
             <p className="text-sm text-muted-foreground">
-              {filteredArticles.length} resultados
+              {filteredArticles.length} resultados (últimos {timeWindowDays} {timeWindowDays === 1 ? "dia" : "dias"})
             </p>
           </div>
 

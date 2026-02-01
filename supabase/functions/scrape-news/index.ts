@@ -619,6 +619,18 @@ const DEFAULT_ALLOWED_HOSTS = [
   'sciencealert.com',
 ];
 
+function normalizeHostList(hosts: string[]): string[] {
+  return hosts
+    .map((h) => h.trim().toLowerCase())
+    .filter(Boolean)
+    .map((h) => (h.startsWith('.') ? h.slice(1) : h));
+}
+
+function isHostAllowed(host: string, allowed: string[]): boolean {
+  const h = host.trim().toLowerCase();
+  return allowed.some((a) => h === a || h.endsWith(`.${a}`));
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -730,7 +742,7 @@ Deno.serve(async (req) => {
 
     let selectedQueries = queries;
     const totalQ = queries.length;
-    const sliceSize = 6;
+    const sliceSize = 10;
     const m = (batch || '').match(/^q(\d+)$/i);
     if (m) {
       const idx = Math.max(0, parseInt(m[1], 10) - 1);
@@ -779,12 +791,13 @@ Deno.serve(async (req) => {
         const tldWhitelist = (Deno.env.get('RECON_TLD_WHITELIST') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
         let allowedHosts = (Deno.env.get('RECON_ALLOWED_HOSTS') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
         if (allowedHosts.length === 0) allowedHosts = DEFAULT_ALLOWED_HOSTS;
+        const normalizedAllowedHosts = normalizeHostList(allowedHosts);
         if (countryOnly === 'BR') {
-          if (!(host.endsWith('.br') || allowedHosts.includes(host))) {
+          if (!(host.endsWith('.br') || isHostAllowed(host, normalizedAllowedHosts))) {
             return false;
           }
         } else if (tldWhitelist.length > 0) {
-          if (!(tldWhitelist.some(suf => host.endsWith(suf)) || allowedHosts.includes(host))) {
+          if (!(tldWhitelist.some(suf => host.endsWith(suf)) || isHostAllowed(host, normalizedAllowedHosts))) {
             return false;
           }
         }
