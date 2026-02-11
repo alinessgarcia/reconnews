@@ -4,8 +4,8 @@ import { ArticleCard } from "@/components/ArticleCard";
 import { FeaturedCard } from "@/components/FeaturedCard";
 import { SearchBar } from "@/components/SearchBar";
 import { Pagination } from "@/components/Pagination";
-import { Link } from "react-router-dom";
-import { Newspaper, Filter, ChevronDown, ChevronUp, Dumbbell, Globe, Rss, Clock, Share2, Bookmark, BookmarkCheck } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Newspaper, Filter, ChevronDown, ChevronUp, Dumbbell, Globe, Rss, Clock, Share2, Bookmark, BookmarkCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerClose } from "@/components/ui/drawer";
@@ -15,6 +15,24 @@ import { Separator } from "@/components/ui/separator";
 import { REGIONS_CIVILIZATIONS, EVIDENCE_TYPES, THEMES } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { CONTENT_CATEGORIES } from "@/components/Navbar";
+
+// Keywords for each content category — used to filter articles by title/description
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  arqueologia: ["arqueolog", "bíbli", "bibli", "escavação", "escavaç", "artefat", "manuscrito", "antigo testamento", "novo testamento", "terra santa", "jerusalem", "arqueólog", "descoberta", "achado", "ruína", "sítio arqueológico", "achados", "dead sea", "mar morto", "ancient", "artifact", "biblical", "excavat", "scroll"],
+  liberdade: ["liberda", "perseguiç", "perseguic", "religiosa", "religioso", "fé", "cristão", "cristã", "igreja", "evangél", "evangel", "persecut", "freedom", "religious", "church", "christian", "faith", "pastor", "missionár", "culto", "oração", "pray"],
+  saude: ["saúde", "saude", "bem-estar", "bem estar", "aliment", "nutriç", "nutric", "vitamina", "mineral", "health", "wellness", "food", "diet", "nutrition", "saudável", "saudavel", "benefício", "beneficio", "cura", "prevenç", "prevenc", "imunidade", "colesterol", "diabetes", "pressão", "pressao"],
+  natureza: ["natureza", "planta", "medicin", "erva", "fitoterápic", "fitoterapic", "natural", "chá de", "cha de", "folha", "raiz", "herbal", "herb", "botanical", "remédio natural", "remedio natural", "floresta", "biodiversidade", "orgânic", "organic"],
+  dieta: ["dieta", "proteí", "protei", "proteic", "salada", "receita", "carne", "frango", "peixe", "ovo", "legume", "verdura", "low carb", "keto", "protein", "recipe", "meal", "calorias", "emagre", "musculaç", "whey", "suplemento", "treino"],
+};
+
+function matchesCategory(article: { title: string; description?: string; title_pt?: string; description_pt?: string; category?: string }, catId: string): boolean {
+  const keywords = CATEGORY_KEYWORDS[catId];
+  if (!keywords) return true; // unknown category = show all
+  const text = `${article.title} ${article.description || ''} ${article.title_pt || ''} ${article.description_pt || ''} ${article.category || ''}`.toLowerCase();
+  return keywords.some(kw => text.includes(kw));
+}
+
 
 const HIDDEN_CATEGORIES = new Set(['Portal Evangélico', 'Notícias Evangélicas']);
 
@@ -101,6 +119,10 @@ const FilterSelect = ({
 );
 
 const Index = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeCategoria = searchParams.get("categoria");
+  const activeCatMeta = CONTENT_CATEGORIES.find(c => c.id === activeCategoria);
+
   const [articles, setArticles] = useState<Article[]>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
@@ -229,6 +251,11 @@ const Index = () => {
   useEffect(() => {
     let result = [...articles];
 
+    // Apply content category filter from navbar
+    if (activeCategoria && CATEGORY_KEYWORDS[activeCategoria]) {
+      result = result.filter(a => matchesCategory(a, activeCategoria));
+    }
+
     const q = (searchQuery || '').trim().toLowerCase();
     if (q) {
       result = result.filter(a => (
@@ -243,7 +270,7 @@ const Index = () => {
 
     setFilteredArticles(result);
     setCurrentPage(1);
-  }, [articles, searchQuery, selectedSource, selectedCategory]);
+  }, [articles, searchQuery, selectedSource, selectedCategory, activeCategoria]);
 
   const totalPages = Math.max(1, Math.ceil(filteredArticles.length / ITEMS_PER_PAGE));
 
@@ -278,6 +305,9 @@ const Index = () => {
     setSelectedEvidence(null);
     setSelectedTheme(null);
     setSearchQuery("");
+    if (activeCategoria) {
+      setSearchParams({});
+    }
   };
 
   const MobileFilters = () => (
@@ -371,10 +401,12 @@ const Index = () => {
               <img src="/android-chrome-512x512.png" alt="ReconNews Logo" className="h-14 w-14 md:h-16 md:w-16 rounded-xl shadow-lg" />
               <div>
                 <h1 className="text-3xl md:text-5xl font-bold tracking-tight">
-                  ReconNews Brasil
+                  {activeCatMeta ? activeCatMeta.label : "ReconNews Brasil"}
                 </h1>
                 <p className="text-primary-foreground/80 text-sm md:text-lg font-medium mt-1">
-                  Cristianismo, arqueologia, liberdade religiosa, saúde e natureza
+                  {activeCatMeta
+                    ? `${activeCatMeta.emoji} Filtrando notícias por categoria`
+                    : "Cristianismo, arqueologia, liberdade religiosa, saúde e natureza"}
                 </p>
               </div>
             </div>
@@ -423,9 +455,27 @@ const Index = () => {
       <main className="container mx-auto max-w-7xl px-4">
         <div className="mt-8">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Explorar Notícias</h2>
+            <h2 className="text-xl font-semibold">
+              {activeCatMeta ? activeCatMeta.label : "Explorar Notícias"}
+            </h2>
             {isMobile ? <MobileFilters /> : <DesktopFilters />}
           </div>
+
+          {/* Active category badge */}
+          {activeCatMeta && (
+            <div className="flex items-center gap-2 mt-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-sm font-medium text-primary">
+                {activeCatMeta.emoji} {activeCatMeta.label}
+                <button
+                  onClick={() => setSearchParams({})}
+                  className="ml-1 rounded-full p-0.5 hover:bg-primary/20 transition-colors"
+                  title="Remover filtro"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            </div>
+          )}
 
           <div className="flex items-center justify-between mt-4">
             <p className="text-sm text-muted-foreground">
@@ -565,13 +615,21 @@ const Index = () => {
               <h4 className="font-semibold text-sm mb-3">NAVEGAÇÃO</h4>
               <ul className="text-sm text-muted-foreground space-y-2">
                 <li>
-                  <Link to="/" className="hover:text-primary transition-colors">📰 Notícias</Link>
+                  <Link to="/" className="hover:text-primary transition-colors">📰 Todas as Notícias</Link>
                 </li>
-                <li>
-                  <Link to="/exercicios" className="hover:text-primary transition-colors">
-                    💪 Exercícios ({238})
-                  </Link>
-                </li>
+                {CONTENT_CATEGORIES.map(cat => (
+                  <li key={cat.id}>
+                    {cat.id === "exercicios" ? (
+                      <Link to="/exercicios" className="hover:text-primary transition-colors">
+                        {cat.emoji} {cat.label}
+                      </Link>
+                    ) : (
+                      <Link to={`/?categoria=${cat.id}`} className="hover:text-primary transition-colors">
+                        {cat.emoji} {cat.label}
+                      </Link>
+                    )}
+                  </li>
+                ))}
               </ul>
             </div>
 
