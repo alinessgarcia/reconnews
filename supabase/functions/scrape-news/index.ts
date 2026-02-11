@@ -466,120 +466,47 @@ async function scrapeGoogleNews(query: string, category: string, locale: GoogleN
   return parseRSSFeed(url, 'Google News', category);
 }
 
-// Fontes RSS focadas em Arqueologia, Manuscritos e História Bíblica
+// ─── Fontes RSS brasileiras e portuguesas por categoria ───
 const RSS_FEEDS = [
-  // Arqueologia Bíblica e Manuscritos
-  {
-    url: 'https://www.biblicalarchaeology.org/feed',
-    source: 'Biblical Archaeology Society',
-    category: 'Arqueologia Bíblica',
-  },
-  {
-    url: 'https://asorblog.org/feed/',
-    source: 'ASOR Blog',
-    category: 'Arqueologia do Oriente Próximo',
-  },
-  // Portais amplos de arqueologia
-  {
-    url: 'https://www.heritagedaily.com/feed',
-    source: 'HeritageDaily',
-    category: 'Descobertas Arqueológicas',
-  },
-  {
-    url: 'https://arkeonews.net/feed/',
-    source: 'ArkeoNews',
-    category: 'Descobertas Arqueológicas',
-  },
-  {
-    url: 'https://popular-archaeology.com/feed/',
-    source: 'Popular Archaeology',
-    category: 'Descobertas Arqueológicas',
-  },
-  {
-    url: 'https://www.ancient-origins.net/rss.xml',
-    source: 'Ancient Origins',
-    category: 'História Antiga',
-  },
-  // Agregadores de ciência com seção de arqueologia
-  {
-    url: 'https://www.sciencedaily.com/rss/archaeology.xml',
-    source: 'ScienceDaily – Archaeology',
-    category: 'Achados Científicos',
-  },
-  {
-    url: 'https://www.sciencedaily.com/rss/fossils_ruins.xml',
-    source: 'ScienceDaily – Fossils & Ruins',
-    category: 'Achados Científicos',
-  },
-  {
-    url: 'https://phys.org/rss-feed/archaeology-fossils/',
-    source: 'Phys.org – Archaeology & Fossils',
-    category: 'Achados Científicos',
-  },
-  // Mídia internacional com seção dedicada
-  {
-    url: 'https://www.theguardian.com/science/archaeology/rss',
-    source: 'The Guardian – Archaeology',
-    category: 'Arqueologia',
-  },
-  {
-    url: 'https://www.archaeology.org/rss',
-    source: 'Archaeology Magazine (AIA)',
-    category: 'Arqueologia',
-  },
-  {
-    url: 'https://www.livescience.com/feeds/all',
-    source: 'Live Science',
-    category: 'Ciência e Descobertas',
-  },
-  {
-    url: 'https://www.smithsonianmag.com/rss/smart-news/',
-    source: 'Smithsonian – Smart News',
-    category: 'Ciência e História',
-  },
-  {
-    url: 'https://www.sciencenews.org/feed',
-    source: 'Science News',
-    category: 'Ciência e Descobertas',
-  },
-  {
-    url: 'http://feeds.bbci.co.uk/news/science_and_environment/rss.xml',
-    source: 'BBC – Science & Environment',
-    category: 'Ciência e Descobertas',
-  },
-  {
-    url: 'https://www.sciencealert.com/feed',
-    source: 'ScienceAlert',
-    category: 'Ciência e Descobertas',
-  },
-  {
-    url: 'https://www.nature.com/subjects/archaeology/rss',
-    source: 'Nature – Archaeology',
-    category: 'Achados Científicos',
-  },
+  // ✝️ Fé e Vida Cristã
+  { url: 'https://www.gospelprime.com.br/feed/', source: 'Gospel Prime', category: 'Fé e Vida Cristã' },
+  { url: 'https://www.gospelmais.com.br/feed/', source: 'Gospel Mais', category: 'Fé e Vida Cristã' },
+  { url: 'https://guiame.com.br/feed/', source: 'Guiame', category: 'Fé e Vida Cristã' },
+  { url: 'https://nfrfrases.com.br/feed/', source: 'NFR Frases', category: 'Fé e Vida Cristã' },
+  { url: 'https://www.cpadnews.com.br/feed/', source: 'CPAD News', category: 'Fé e Vida Cristã' },
+
+  // 🕊️ Liberdade e Perseguição Religiosa
+  { url: 'https://www.portasabertas.org.br/feed/', source: 'Portas Abertas', category: 'Perseguição Religiosa' },
+  { url: 'https://www.acidigital.com/rss/noticias.xml', source: 'ACI Digital', category: 'Liberdade Religiosa' },
+  { url: 'https://nfrfrases.com.br/feed/', source: 'NFR – Perseguição', category: 'Perseguição Religiosa' },
+
+  // 🍎 Saúde, Bem-Estar e Alimentos
+  { url: 'https://www.minhavida.com.br/feed', source: 'Minha Vida', category: 'Saúde e Bem-Estar' },
+  { url: 'https://www.tuasaude.com/feed/', source: 'Tua Saúde', category: 'Saúde e Bem-Estar' },
+  { url: 'https://saude.abril.com.br/feed/', source: 'Veja Saúde', category: 'Saúde e Bem-Estar' },
+  { url: 'https://vidasaudavel.einstein.br/feed/', source: 'Einstein Vida Saudável', category: 'Saúde e Bem-Estar' },
+  { url: 'https://g1.globo.com/rss/g1/ciencia-e-saude/', source: 'G1 Saúde', category: 'Saúde e Bem-Estar' },
+
+  // 🌿 Natureza e Plantas Medicinais
+  { url: 'https://www.ecycle.com.br/feed/', source: 'eCycle', category: 'Natureza e Meio Ambiente' },
+  { url: 'https://ciclovivo.com.br/feed/', source: 'CicloVivo', category: 'Natureza e Meio Ambiente' },
+  { url: 'https://www.greenme.com.br/feed/', source: 'GreenMe', category: 'Plantas Medicinais' },
+  { url: 'https://www.tuasaude.com/categorias/plantas-medicinais/feed/', source: 'Tua Saúde – Plantas', category: 'Plantas Medicinais' },
+
+  // 🥗 Dieta Proteica e Saladas
+  { url: 'https://www.mundoboaforma.com.br/feed/', source: 'Mundo Boa Forma', category: 'Dieta Proteica' },
+  { url: 'https://www.ativo.com/feed/', source: 'Ativo', category: 'Dieta e Exercícios' },
+  { url: 'https://receitasninja.com/feed/', source: 'Receitas Ninja', category: 'Saladas e Receitas' },
 ];
 
-// Política editorial: permitir apenas fontes focadas em arqueologia, manuscritos e história bíblica
-// Você pode personalizar via variáveis de ambiente RECON_ALLOWED_SOURCES (nomes) e RECON_BLOCKED_HOSTS (domínios)
+// Política editorial: fontes brasileiras e portuguesas
 const FEEDS_ALLOWLIST = new Set(
   (Deno.env.get('RECON_ALLOWED_SOURCES')?.split(',').map(s => s.trim()).filter(Boolean)) ?? [
-    'Biblical Archaeology Society',
-    'ASOR Blog',
-    'HeritageDaily',
-    'ArkeoNews',
-    'Popular Archaeology',
-    'Ancient Origins',
-    'ScienceDaily – Archaeology',
-    'ScienceDaily – Fossils & Ruins',
-    'Phys.org – Archaeology & Fossils',
-    'The Guardian – Archaeology',
-    'Archaeology Magazine (AIA)',
-    'Live Science',
-    'Smithsonian – Smart News',
-    'Science News',
-    'BBC – Science & Environment',
-    'ScienceAlert',
-    'Nature – Archaeology',
+    'Gospel Prime', 'Gospel Mais', 'Guiame', 'NFR Frases', 'CPAD News',
+    'Portas Abertas', 'ACI Digital', 'NFR – Perseguição',
+    'Minha Vida', 'Tua Saúde', 'Veja Saúde', 'Einstein Vida Saudável', 'G1 Saúde',
+    'eCycle', 'CicloVivo', 'GreenMe', 'Tua Saúde – Plantas',
+    'Mundo Boa Forma', 'Ativo', 'Receitas Ninja',
   ]
 );
 
@@ -587,36 +514,24 @@ const BLOCKED_HOSTS = new Set(
   (Deno.env.get('RECON_BLOCKED_HOSTS')?.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)) ?? []
 );
 
-// Hosts internacionais permitidos por padrão quando a política é BR, para fontes temáticas confiáveis
+// Domínios BR/PT permitidos por padrão
 const DEFAULT_ALLOWED_HOSTS = [
-  'christianitytoday.com',
-  'thegospelcoalition.org',
-  'christianpost.com',
-  'biblicalarchaeology.org',
-  'asorblog.org',
-  'heritagedaily.com',
-  'arkeonews.net',
-  'popular-archaeology.com',
-  'ancient-origins.net',
-  'sciencedaily.com',
-  'phys.org',
-  'theguardian.com',
-  'livescience.com',
-  'smithsonianmag.com',
-  'nationalgeographic.com',
-  'jpost.com',
-  'timesofisrael.com',
-  'iaa.gov.il',
-  'archaeology.co.uk',
-  'nature.com',
+  // Fé e Vida Cristã
+  'gospelprime.com.br', 'gospelmais.com.br', 'guiame.com.br',
+  'nfrfrases.com.br', 'cpadnews.com.br',
+  // Liberdade Religiosa
+  'portasabertas.org.br', 'acidigital.com',
+  // Saúde / Bem-Estar
+  'minhavida.com.br', 'tuasaude.com', 'abril.com.br', 'uol.com.br',
+  'einstein.br', 'globo.com', 'g1.globo.com',
+  // Natureza / Plantas
+  'ecycle.com.br', 'ciclovivo.com.br', 'greenme.com.br',
+  // Dieta / Receitas
+  'mundoboaforma.com.br', 'ativo.com', 'receitasninja.com',
+  // Portais genéricos BR confiáveis
+  'folha.uol.com.br', 'estadao.com.br', 'terra.com.br',
+  'r7.com', 'correiobraziliense.com.br', 'gazetadopovo.com.br',
   'bbc.com',
-  'discovermagazine.com',
-  'history.com',
-  'newyorker.com',
-  'haaretz.com',
-  'archaeology.org',
-  'sciencenews.org',
-  'sciencealert.com',
 ];
 
 function normalizeHostList(hosts: string[]): string[] {
@@ -661,7 +576,7 @@ Deno.serve(async (req) => {
       console.log('✓ Limpeza concluída\n');
     }
 
-    console.log('🚀 Iniciando coleta de notícias sobre Fé Cristã e Arqueologia Bíblica...\n');
+    console.log('🚀 Iniciando coleta de notícias — Fé, Saúde, Natureza, Dieta e Liberdade Religiosa...\n');
 
     let totalArticles = 0;
     let newArticles = 0;
@@ -671,85 +586,63 @@ Deno.serve(async (req) => {
     console.log('🔍 Buscando no Google News...');
 
     const queries: Array<{ term: string; category: string; locale?: GoogleNewsLocaleKey }> = [
-      { term: 'arqueologia bíblica', category: 'Arqueologia Bíblica' },
-      { term: 'descoberta arqueológica Israel', category: 'Descobertas Arqueológicas' },
-      { term: 'manuscritos antigos bíblia', category: 'Manuscritos e Documentos' },
-      { term: 'Mar Morto manuscritos descoberta', category: 'Manuscritos e Documentos' },
-      { term: 'escavações Jerusalém Cidade de David', category: 'Arqueologia de Jerusalém' },
-      { term: 'Tel Hazor escavações', category: 'Cidades e Personagens Bíblicos' },
-      { term: 'Tel Lachish escavações', category: 'Cidades e Personagens Bíblicos' },
-      { term: 'Tel Dan estela descoberta', category: 'Cidades e Personagens Bíblicos' },
-      { term: 'Masada descoberta arqueológica', category: 'Cidades e Personagens Bíblicos' },
-      { term: 'inscrições hebraico aramaico bíblia achado', category: 'Manuscritos e Documentos' },
-      { term: 'papiros bíblicos pergaminhos descoberta', category: 'Manuscritos e Documentos' },
-      { term: 'Israel Finkelstein arqueologia bíblica', category: 'Pesquisadores Renomados' },
-      { term: 'William Dever arqueologia bíblica', category: 'Pesquisadores Renomados' },
-      { term: 'Yigael Yadin descoberta arqueológica', category: 'Pesquisadores Renomados' },
+      // ✝️ Fé e Vida Cristã (8 queries)
+      { term: 'notícias evangélicas Brasil', category: 'Fé e Vida Cristã' },
+      { term: 'mundo cristão notícias igreja', category: 'Fé e Vida Cristã' },
+      { term: 'igreja evangélica Brasil notícias', category: 'Fé e Vida Cristã' },
+      { term: 'pastor pregação testemunho cristão', category: 'Fé e Vida Cristã' },
+      { term: 'devocional cristão estudo bíblico', category: 'Fé e Vida Cristã' },
+      { term: 'louvor gospel novidades música', category: 'Fé e Vida Cristã' },
+      { term: 'missões cristãs evangelismo', category: 'Fé e Vida Cristã' },
+      { term: 'fé cristã reflexão diária', category: 'Fé e Vida Cristã' },
+
+      // 🕊️ Liberdade e Perseguição Religiosa (8 queries)
       { term: 'perseguição religiosa cristãos Brasil', category: 'Perseguição Religiosa' },
       { term: 'liberdade religiosa leis cristãos Brasil', category: 'Liberdade Religiosa' },
       { term: 'leis que afetam doutrina evangélica Brasil', category: 'Liberdade Religiosa' },
-      { term: 'saúde bem estar estudos alimentação saudável Brasil', category: 'Saúde e Bem-Estar' },
-      { term: 'alimentos saudáveis comprovados estudo Brasil', category: 'Alimentos Saudáveis' },
-      { term: 'exercícios acima de 40 anos Brasil', category: 'Exercícios 40+' },
-      { term: 'dicas de saúde para maiores de 40 Brasil', category: 'Exercícios 40+' },
-      { term: 'natureza conservação Brasil descobertas', category: 'Natureza e Meio Ambiente' },
-      { term: 'plantas medicinais estudos Brasil', category: 'Plantas Medicinais' },
-      { term: 'mundo cristão Brasil notícias', category: 'Mundo Cristão' },
-      { term: 'arqueologia do Oriente Próximo descobertas', category: 'Descobertas Arqueológicas' },
-      { term: 'inscrição antiga hebraico descoberta', category: 'Manuscritos e Documentos' },
-      { term: 'tabuleta cuneiforme descoberta', category: 'História Antiga' },
-      { term: 'estela antiga inscrição descoberta', category: 'História Antiga' },
-      { term: 'escavações arqueológicas Galileia', category: 'Descobertas Arqueológicas' },
-      { term: 'arqueologia bíblica Jerusalém templo', category: 'Arqueologia de Jerusalém' },
-      { term: 'Qumran manuscritos Mar Morto', category: 'Manuscritos e Documentos' },
-      { term: 'papiro antigo bíblico descoberta', category: 'Manuscritos e Documentos' },
-      { term: 'ossuário inscrição aramaico descoberta', category: 'Manuscritos e Documentos' },
-      { term: 'mosaico bizantino descoberta', category: 'História Antiga' },
-      { term: 'Igreja antiga descoberta arqueológica', category: 'Mundo Cristão' },
-      { term: 'Cristianismo primitivo descoberta arqueologia', category: 'Mundo Cristão' },
-      { term: 'Israel Antiquities Authority escavação', category: 'Descobertas Arqueológicas' },
-      { term: 'Autoridade de Antiguidades de Israel descoberta', category: 'Descobertas Arqueológicas' },
-      { term: 'descoberta arqueológica Egito inscrição', category: 'História Antiga' },
-      { term: 'descoberta arqueológica Roma antiga', category: 'História Antiga' },
-      { term: 'Patrimônio histórico descobertas arqueológicas', category: 'Descobertas Arqueológicas' },
-      { term: 'saúde estudos clínicos alimentação', category: 'Saúde e Bem-Estar' },
-      { term: 'atividade física longevidade estudo', category: 'Exercícios 40+' },
-      { term: 'plantas medicinais evidência científica', category: 'Plantas Medicinais' },
-      { term: 'conservação ambiental descoberta científica', category: 'Natureza e Meio Ambiente' },
       { term: 'liberdade religiosa cristãos tribunal', category: 'Liberdade Religiosa' },
-      { term: 'perseguição cristãos relatório', category: 'Perseguição Religiosa' },
+      { term: 'perseguição cristãos relatório mundial', category: 'Perseguição Religiosa' },
       { term: 'ataque igreja cristã perseguição', category: 'Perseguição Religiosa' },
-      { term: 'missões cristãs perseguição', category: 'Perseguição Religiosa' },
-      { term: 'política religiosa liberdade de culto', category: 'Liberdade Religiosa' },
-      { term: 'bible archaeology discovery', category: 'Arqueologia Bíblica', locale: 'US' },
-      { term: 'biblical archaeology Jerusalem excavation', category: 'Arqueologia de Jerusalém', locale: 'US' },
-      { term: 'Dead Sea Scrolls discovery', category: 'Manuscritos e Documentos', locale: 'US' },
-      { term: 'ancient manuscript discovery papyrus', category: 'Manuscritos e Documentos', locale: 'US' },
-      { term: 'biblical inscription discovery', category: 'Manuscritos e Documentos', locale: 'US' },
-      { term: 'Israel Antiquities Authority discovery', category: 'Descobertas Arqueológicas', locale: 'US' },
-      { term: 'Second Temple period archaeology', category: 'Arqueologia Bíblica', locale: 'US' },
-      { term: 'Canaanite archaeology discovery', category: 'História Antiga', locale: 'US' },
-      { term: 'Assyrian inscription discovery', category: 'História Antiga', locale: 'US' },
-      { term: 'ancient Near East archaeology discovery', category: 'Descobertas Arqueológicas', locale: 'US' },
-      { term: 'early Christianity archaeology discovery', category: 'Mundo Cristão', locale: 'US' },
-      { term: 'Christian persecution report', category: 'Perseguição Religiosa', locale: 'US' },
-      { term: 'religious liberty court ruling', category: 'Liberdade Religiosa', locale: 'US' },
-      { term: 'healthy foods study benefits', category: 'Alimentos Saudáveis', locale: 'US' },
-      { term: 'exercise over 40 health', category: 'Exercícios 40+', locale: 'US' },
-      { term: 'medicinal plants study', category: 'Plantas Medicinais', locale: 'US' },
-      { term: 'archaeology discovery Israel site:bbc.com', category: 'Descobertas Arqueológicas', locale: 'US' },
-      // Dieta Proteica — ovos, frango, peixe
+      { term: 'cristãos perseguidos mundo árabe', category: 'Perseguição Religiosa' },
+      { term: 'política religiosa liberdade de culto Brasil', category: 'Liberdade Religiosa' },
+      { term: 'intolerância religiosa contra evangélicos', category: 'Perseguição Religiosa' },
+      { term: 'direitos religiosos constituição brasileira', category: 'Liberdade Religiosa' },
+
+      // 🍎 Saúde, Bem-Estar e Alimentos (10 queries)
+      { term: 'saúde bem estar estudos alimentação saudável', category: 'Saúde e Bem-Estar' },
+      { term: 'alimentos saudáveis comprovados estudo', category: 'Alimentos Saudáveis' },
+      { term: 'saúde estudos clínicos alimentação', category: 'Saúde e Bem-Estar' },
+      { term: 'dicas de saúde para maiores de 40', category: 'Saúde e Bem-Estar' },
+      { term: 'benefícios chá natural saúde', category: 'Saúde e Bem-Estar' },
+      { term: 'prevenção doenças alimentação natural', category: 'Saúde e Bem-Estar' },
+      { term: 'imunidade alimentos vitaminas minerais', category: 'Saúde e Bem-Estar' },
+      { term: 'colesterol diabetes hipertensão alimentação', category: 'Saúde e Bem-Estar' },
+      { term: 'sono qualidade saúde mental bem estar', category: 'Saúde e Bem-Estar' },
+      { term: 'envelhecimento saudável longevidade estudo', category: 'Saúde e Bem-Estar' },
+
+      // 🌿 Natureza e Plantas Medicinais (10 queries)
+      { term: 'plantas medicinais estudos Brasil', category: 'Plantas Medicinais' },
+      { term: 'plantas medicinais evidência científica', category: 'Plantas Medicinais' },
+      { term: 'natureza conservação Brasil descobertas', category: 'Natureza e Meio Ambiente' },
+      { term: 'conservação ambiental descoberta científica', category: 'Natureza e Meio Ambiente' },
+      { term: 'ervas medicinais benefícios comprovados', category: 'Plantas Medicinais' },
+      { term: 'chá camomila hortelã gengibre benefícios', category: 'Plantas Medicinais' },
+      { term: 'fitoterapia remédio natural planta', category: 'Plantas Medicinais' },
+      { term: 'biodiversidade brasileira flora fauna', category: 'Natureza e Meio Ambiente' },
+      { term: 'horta orgânica cultivo caseiro', category: 'Natureza e Meio Ambiente' },
+      { term: 'sustentabilidade meio ambiente ecologia Brasil', category: 'Natureza e Meio Ambiente' },
+
+      // 🥗 Dieta Proteica e Saladas (10 queries)
       { term: 'dieta proteica ovos frango peixe benefícios', category: 'Dieta Proteica' },
       { term: 'benefícios peixe frango alimentação saudável estudo', category: 'Dieta Proteica' },
       { term: 'receita saudável frango peixe ovos nutrição', category: 'Dieta Proteica' },
-      // Carne Vermelha
       { term: 'dieta carne vermelha saúde estudos', category: 'Dieta de Carnes Vermelhas' },
       { term: 'benefícios riscos carne vermelha nutrição', category: 'Dieta de Carnes Vermelhas' },
       { term: 'carne vermelha alimentação saúde estudo clínico', category: 'Dieta de Carnes Vermelhas' },
-      // Saladas
       { term: 'saladas saudáveis corpo mente benefícios', category: 'Saladas para Corpo e Mente' },
       { term: 'receita salada nutritiva saúde mental estudo', category: 'Saladas para Corpo e Mente' },
-      { term: 'benefícios salada alimentação saúde bem-estar', category: 'Saladas para Corpo e Mente' },
+      { term: 'receita low carb proteína prato saudável', category: 'Dieta Proteica' },
+      { term: 'suplemento proteína whey treino alimentação', category: 'Dieta Proteica' },
     ];
 
     let selectedQueries = queries;

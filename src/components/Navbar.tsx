@@ -6,7 +6,7 @@ import { useDarkMode } from "@/hooks/use-dark-mode";
 import { cn } from "@/lib/utils";
 
 export const CONTENT_CATEGORIES = [
-    { id: "arqueologia", label: "Arqueologia Bíblica", icon: BookOpen, emoji: "📜" },
+    { id: "fe", label: "Fé e Vida Cristã", icon: BookOpen, emoji: "✝️" },
     { id: "liberdade", label: "Liberdade e Perseguição Religiosa", icon: ShieldCheck, emoji: "🕊️" },
     { id: "saude", label: "Saúde, Bem‑Estar e Alimentos", icon: HeartPulse, emoji: "🍎" },
     { id: "exercicios", label: "Dicas de Exercícios 40+", icon: Dumbbell, emoji: "💪" },

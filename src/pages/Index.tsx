@@ -19,8 +19,8 @@ import { CONTENT_CATEGORIES } from "@/components/Navbar";
 
 // Keywords for each content category — used to filter articles by title/description
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  arqueologia: ["arqueolog", "bíbli", "bibli", "escavação", "escavaç", "artefat", "manuscrito", "antigo testamento", "novo testamento", "terra santa", "jerusalem", "arqueólog", "descoberta", "achado", "ruína", "sítio arqueológico", "achados", "dead sea", "mar morto", "ancient", "artifact", "biblical", "excavat", "scroll"],
-  liberdade: ["liberda", "perseguiç", "perseguic", "religiosa", "religioso", "fé", "cristão", "cristã", "igreja", "evangél", "evangel", "persecut", "freedom", "religious", "church", "christian", "faith", "pastor", "missionár", "culto", "oração", "pray"],
+  fe: ["fé", "cristão", "cristã", "jesus", "deus", "bíbli", "bibli", "igreja", "evangél", "evangel", "pastor", "culto", "oração", "devocional", "espírit", "gospel", "teolog", "louvor", "pregação", "testemunho", "salvação", "batismo", "católic", "protestant", "doutrina", "crente", "missão", "missionár"],
+  liberdade: ["liberda", "perseguiç", "perseguic", "religiosa", "religioso", "persecut", "freedom", "religious", "tribunal", "lei", "direito", "constituiç", "liberdade de culto", "intolerância", "discriminaç", "preso por fé"],
   saude: ["saúde", "saude", "bem-estar", "bem estar", "aliment", "nutriç", "nutric", "vitamina", "mineral", "health", "wellness", "food", "diet", "nutrition", "saudável", "saudavel", "benefício", "beneficio", "cura", "prevenç", "prevenc", "imunidade", "colesterol", "diabetes", "pressão", "pressao"],
   natureza: ["natureza", "planta", "medicin", "erva", "fitoterápic", "fitoterapic", "natural", "chá de", "cha de", "folha", "raiz", "herbal", "herb", "botanical", "remédio natural", "remedio natural", "floresta", "biodiversidade", "orgânic", "organic"],
   dieta: ["dieta", "proteí", "protei", "proteic", "salada", "receita", "carne", "frango", "peixe", "ovo", "legume", "verdura", "low carb", "keto", "protein", "recipe", "meal", "calorias", "emagre", "musculaç", "whey", "suplemento", "treino"],
@@ -606,7 +606,7 @@ const Index = () => {
                 <h4 className="font-bold text-lg">ReconNews</h4>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Agregador automático de notícias sobre arqueologia cristã, liberdade religiosa, saúde e bem‑estar. Atualizado 5x ao dia.
+                Agregador automático de notícias sobre fé cristã, liberdade religiosa, saúde, bem‑estar e natureza. Atualizado 5x ao dia.
               </p>
             </div>
 
@@ -633,16 +633,23 @@ const Index = () => {
               </ul>
             </div>
 
-            {/* Cobertura */}
+            {/* Cobertura — links funcionais */}
             <div>
               <h4 className="font-semibold text-sm mb-3">COBERTURA</h4>
               <ul className="text-sm text-muted-foreground space-y-2">
-                <li>✓ Arqueologia Bíblica</li>
-                <li>✓ Liberdade e Perseguição Religiosa</li>
-                <li>✓ Saúde, Bem‑Estar e Alimentos</li>
-                <li>✓ Dicas de Exercícios 40+</li>
-                <li>✓ Natureza e Plantas Medicinais</li>
-                <li>✓ Dieta Proteica e Saladas</li>
+                {CONTENT_CATEGORIES.map(cat => (
+                  <li key={cat.id}>
+                    {cat.id === "exercicios" ? (
+                      <Link to="/exercicios" className="hover:text-primary transition-colors">
+                        ✓ {cat.label}
+                      </Link>
+                    ) : (
+                      <Link to={`/?categoria=${cat.id}`} className="hover:text-primary transition-colors">
+                        ✓ {cat.label}
+                      </Link>
+                    )}
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
