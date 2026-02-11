@@ -5,7 +5,7 @@ import { FeaturedCard } from "@/components/FeaturedCard";
 import { SearchBar } from "@/components/SearchBar";
 import { Pagination } from "@/components/Pagination";
 import { Link, useSearchParams } from "react-router-dom";
-import { Newspaper, Filter, ChevronDown, ChevronUp, Dumbbell, Globe, Rss, Clock, Share2, Bookmark, BookmarkCheck, X } from "lucide-react";
+import { Newspaper, Filter, ChevronDown, ChevronUp, Dumbbell, Clock, Share2, Bookmark, BookmarkCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerClose } from "@/components/ui/drawer";
@@ -247,9 +247,29 @@ const Index = () => {
     return Array.from(new Set(articles.map(a => a.category).filter((c): c is string => !!c && !HIDDEN_CATEGORIES.has(c))));
   }, [articles]);
 
+  // Deduplicação: normaliza o título para agrupar versões pt/en da mesma notícia
+  const deduplicatedArticles = useMemo(() => {
+    const normalize = (s: string) =>
+      s.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9 ]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const seen = new Map<string, Article>();
+    for (const a of articles) {
+      const key = normalize(a.title_pt || a.title);
+      // Mantém apenas o primeiro artigo com título equivalente
+      if (!seen.has(key)) {
+        seen.set(key, a);
+      }
+    }
+    return Array.from(seen.values());
+  }, [articles]);
+
   // Filtragem client-side
   useEffect(() => {
-    let result = [...articles];
+    let result = [...deduplicatedArticles];
 
     // Apply content category filter from navbar
     if (activeCategoria && CATEGORY_KEYWORDS[activeCategoria]) {
@@ -270,7 +290,7 @@ const Index = () => {
 
     setFilteredArticles(result);
     setCurrentPage(1);
-  }, [articles, searchQuery, selectedSource, selectedCategory, activeCategoria]);
+  }, [deduplicatedArticles, searchQuery, selectedSource, selectedCategory, activeCategoria]);
 
   const totalPages = Math.max(1, Math.ceil(filteredArticles.length / ITEMS_PER_PAGE));
 
@@ -291,8 +311,6 @@ const Index = () => {
     );
   }, [filteredArticles]);
 
-  // Stats for the dynamic hero
-  const uniqueSources = sources.length;
   const latestScrapedAt = useMemo(() => {
     if (articles.length === 0) return null;
     return articles[0].scraped_at;
@@ -411,33 +429,7 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Live Stats */}
-            {!loading && articles.length > 0 && (
-              <div className="flex flex-wrap gap-4 md:gap-6">
-                <div className="flex items-center gap-2 text-primary-foreground/90">
-                  <Newspaper className="h-4 w-4" />
-                  <span className="text-sm font-medium">
-                    <span className="text-lg font-bold">{filteredArticles.length}</span> notícias
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-primary-foreground/90">
-                  <Globe className="h-4 w-4" />
-                  <span className="text-sm font-medium">
-                    <span className="text-lg font-bold">{uniqueSources}</span> fontes
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-primary-foreground/90">
-                  <Rss className="h-4 w-4" />
-                  <span className="text-sm font-medium">5x ao dia</span>
-                </div>
-                {latestScrapedAt && (
-                  <div className="flex items-center gap-2 text-primary-foreground/70 text-xs">
-                    <Clock className="h-3.5 w-3.5" />
-                    <span>Atualizado: {new Date(latestScrapedAt).toLocaleString("pt-BR", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}</span>
-                  </div>
-                )}
-              </div>
-            )}
+
           </div>
 
           {/* Search in hero */}
@@ -606,7 +598,7 @@ const Index = () => {
                 <h4 className="font-bold text-lg">ReconNews</h4>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Agregador automático de notícias sobre fé cristã, liberdade religiosa, saúde, bem‑estar e natureza. Atualizado 5x ao dia.
+                Agregador automático de notícias sobre fé cristã, liberdade religiosa, saúde, bem‑estar e natureza.
               </p>
             </div>
 

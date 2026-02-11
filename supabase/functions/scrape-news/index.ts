@@ -711,13 +711,36 @@ Deno.serve(async (req) => {
         } catch {
           return true;
         }
+      })
+      // Filtrar artigos em inglês — manter apenas conteúdo em português
+      .filter(a => {
+        if (isLikelyEnglish(a.title)) {
+          console.log(`  🌐 Removido (inglês): ${a.title.substring(0, 60)}...`);
+          return false;
+        }
+        return true;
       });
 
-    console.log(`📊 Artigos únicos após deduplicação: ${uniqueArticles.length}`);
+    // Deduplicação por título normalizado (evita mesma notícia em PT e EN)
+    const normalizeTitle = (s: string) =>
+      (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    const seenTitles = new Set<string>();
+    const finalArticles = uniqueArticles.filter(a => {
+      const key = normalizeTitle(a.title);
+      if (key.length < 10) return true; // títulos muito curtos não são comparáveis
+      if (seenTitles.has(key)) {
+        console.log(`  🔄 Duplicado removido: ${a.title.substring(0, 60)}...`);
+        return false;
+      }
+      seenTitles.add(key);
+      return true;
+    });
+
+    console.log(`📊 Artigos finais após deduplicação e filtro de idioma: ${finalArticles.length}`);
 
     // Inserir artigos no banco de dados (com tradução e resumo estendido quando possível)
     console.log('\n💾 Salvando artigos no banco de dados...');
-    for (const article of uniqueArticles) {
+    for (const article of finalArticles) {
       const c = classifyArticle(article.title, article.description);
       let title_pt: string | undefined;
       let description_pt: string | undefined;
@@ -795,14 +818,14 @@ Deno.serve(async (req) => {
 
     console.log(`\n✅ Coleta concluída!`);
     console.log(`   Total processado: ${totalArticles} artigos`);
-    console.log(`   Artigos únicos: ${uniqueArticles.length}`);
+    console.log(`   Artigos finais: ${finalArticles.length}`);
     console.log(`   Novos artigos inseridos: ${newArticles}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         totalArticles,
-        uniqueArticles: uniqueArticles.length,
+        uniqueArticles: finalArticles.length,
         newArticles,
         timestamp: new Date().toISOString(),
         durationMs: Date.now() - startedAt,
