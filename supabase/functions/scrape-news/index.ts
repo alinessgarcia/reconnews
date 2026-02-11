@@ -10,23 +10,23 @@ async function checkRobotsTxt(url: string): Promise<boolean> {
   try {
     const urlObj = new URL(url);
     const robotsUrl = `${urlObj.protocol}//${urlObj.host}/robots.txt`;
-    
-    const response = await fetch(robotsUrl, { 
+
+    const response = await fetch(robotsUrl, {
       headers: { 'User-Agent': 'ReconNews-Bot/1.0' },
       signal: AbortSignal.timeout(5000)
     });
-    
+
     if (!response.ok) {
       console.log(`⚠️ Robots.txt não encontrado para ${urlObj.host}, prosseguindo com scraping`);
       return true; // Se não há robots.txt, assumimos que é permitido
     }
-    
+
     const robotsText = await response.text();
     const lines = robotsText.split('\n').map(line => line.trim().toLowerCase());
-    
+
     let userAgentMatch = false;
     let disallowed = false;
-    
+
     for (const line of lines) {
       if (line.startsWith('user-agent:')) {
         const agent = line.split(':')[1].trim();
@@ -39,12 +39,12 @@ async function checkRobotsTxt(url: string): Promise<boolean> {
         }
       }
     }
-    
+
     if (disallowed) {
       console.log(`🚫 Scraping não permitido pelo robots.txt de ${urlObj.host}`);
       return false;
     }
-    
+
     console.log(`✅ Scraping permitido pelo robots.txt de ${urlObj.host}`);
     return true;
   } catch (error) {
@@ -63,7 +63,7 @@ async function fetchWithRetry(url: string, init: RequestInit = {}, attempts = 3,
         signal: AbortSignal.timeout(baseTimeoutMs),
         headers: {
           'User-Agent': 'ReconNews-Bot/1.0 (Christian News Aggregator)',
-          ...(init.headers || {} as Record<string,string>)
+          ...(init.headers || {} as Record<string, string>)
         }
       });
       if (res.ok) return res;
@@ -315,14 +315,14 @@ function cleanCDATA(text: string): string {
 async function parseRSSFeed(url: string, source: string, category: string): Promise<Article[]> {
   try {
     console.log(`  📡 Verificando robots.txt para: ${source}`);
-    
+
     // Verificar robots.txt antes de fazer scraping
     const robotsAllowed = await checkRobotsTxt(url);
     if (!robotsAllowed) {
       console.log(`  🚫 Scraping não permitido pelo robots.txt: ${source}`);
       return [];
     }
-    
+
     console.log(`  📡 Buscando RSS: ${source}`);
     const response = await fetchWithRetry(url, {
       headers: {
@@ -347,7 +347,7 @@ async function parseRSSFeed(url: string, source: string, category: string): Prom
     for (const itemXml of items.slice(0, maxItems)) {
       const title = extractXMLTag(itemXml, 'title');
       let link = extractXMLTag(itemXml, 'link');
-      
+
       if (!title || !link || title.length < 10) continue;
 
       // Google News costuma usar redirecionador; extrair link final quando houver parâmetro url=
@@ -360,7 +360,7 @@ async function parseRSSFeed(url: string, source: string, category: string): Prom
       const description = extractXMLTag(itemXml, 'description');
       const contentEncoded = extractXMLTag(itemXml, 'content:encoded');
       const pubDate = extractXMLTag(itemXml, 'pubDate');
-      
+
       // Tentar extrair imagem de múltiplos campos (description, enclosure, media:content, media:thumbnail)
       let imageUrl: string | undefined;
       if (description) {
@@ -639,7 +639,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? Deno.env.get('PROJECT_URL') ?? Deno.env.get('RECON_SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY') ?? Deno.env.get('RECON_SERVICE_ROLE_KEY')!;
-    
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     let batch: string | null = null;
     try {
@@ -669,7 +669,7 @@ Deno.serve(async (req) => {
 
     // Buscar Google News para termos específicos
     console.log('🔍 Buscando no Google News...');
-    
+
     const queries: Array<{ term: string; category: string; locale?: GoogleNewsLocaleKey }> = [
       { term: 'arqueologia bíblica', category: 'Arqueologia Bíblica' },
       { term: 'descoberta arqueológica Israel', category: 'Descobertas Arqueológicas' },
@@ -738,6 +738,18 @@ Deno.serve(async (req) => {
       { term: 'exercise over 40 health', category: 'Exercícios 40+', locale: 'US' },
       { term: 'medicinal plants study', category: 'Plantas Medicinais', locale: 'US' },
       { term: 'archaeology discovery Israel site:bbc.com', category: 'Descobertas Arqueológicas', locale: 'US' },
+      // Dieta Proteica — ovos, frango, peixe
+      { term: 'dieta proteica ovos frango peixe benefícios', category: 'Dieta Proteica' },
+      { term: 'benefícios peixe frango alimentação saudável estudo', category: 'Dieta Proteica' },
+      { term: 'receita saudável frango peixe ovos nutrição', category: 'Dieta Proteica' },
+      // Carne Vermelha
+      { term: 'dieta carne vermelha saúde estudos', category: 'Dieta de Carnes Vermelhas' },
+      { term: 'benefícios riscos carne vermelha nutrição', category: 'Dieta de Carnes Vermelhas' },
+      { term: 'carne vermelha alimentação saúde estudo clínico', category: 'Dieta de Carnes Vermelhas' },
+      // Saladas
+      { term: 'saladas saudáveis corpo mente benefícios', category: 'Saladas para Corpo e Mente' },
+      { term: 'receita salada nutritiva saúde mental estudo', category: 'Saladas para Corpo e Mente' },
+      { term: 'benefícios salada alimentação saúde bem-estar', category: 'Saladas para Corpo e Mente' },
     ];
 
     let selectedQueries = queries;
@@ -768,7 +780,7 @@ Deno.serve(async (req) => {
       allArticles.push(...articles);
       await new Promise(resolve => setTimeout(resolve, 500));
     }
-    
+
     totalArticles = allArticles.length;
     console.log(`\n📊 Total de artigos encontrados: ${totalArticles}`);
 
@@ -780,33 +792,33 @@ Deno.serve(async (req) => {
       }
       return acc;
     }, [] as Article[])
-    // Aplicar bloqueio por domínio (host) adicional
-    .filter(a => {
-      try {
-        const host = new URL(a.url).hostname.toLowerCase();
-        if (isHostAllowed(host, normalizedBlockedHosts)) {
-          console.log(`  🚫 Bloqueado por domínio: ${host}`);
-          return false;
-        }
-        const countryOnly = (Deno.env.get('RECON_COUNTRY_ONLY') || '').toUpperCase();
-        const tldWhitelist = (Deno.env.get('RECON_TLD_WHITELIST') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-        let allowedHosts = (Deno.env.get('RECON_ALLOWED_HOSTS') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-        if (allowedHosts.length === 0) allowedHosts = DEFAULT_ALLOWED_HOSTS;
-        const normalizedAllowedHosts = normalizeHostList(allowedHosts);
-        if (countryOnly === 'BR') {
-          if (!(host.endsWith('.br') || isHostAllowed(host, normalizedAllowedHosts))) {
+      // Aplicar bloqueio por domínio (host) adicional
+      .filter(a => {
+        try {
+          const host = new URL(a.url).hostname.toLowerCase();
+          if (isHostAllowed(host, normalizedBlockedHosts)) {
+            console.log(`  🚫 Bloqueado por domínio: ${host}`);
             return false;
           }
-        } else if (tldWhitelist.length > 0) {
-          if (!(tldWhitelist.some(suf => host.endsWith(suf)) || isHostAllowed(host, normalizedAllowedHosts))) {
-            return false;
+          const countryOnly = (Deno.env.get('RECON_COUNTRY_ONLY') || '').toUpperCase();
+          const tldWhitelist = (Deno.env.get('RECON_TLD_WHITELIST') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+          let allowedHosts = (Deno.env.get('RECON_ALLOWED_HOSTS') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+          if (allowedHosts.length === 0) allowedHosts = DEFAULT_ALLOWED_HOSTS;
+          const normalizedAllowedHosts = normalizeHostList(allowedHosts);
+          if (countryOnly === 'BR') {
+            if (!(host.endsWith('.br') || isHostAllowed(host, normalizedAllowedHosts))) {
+              return false;
+            }
+          } else if (tldWhitelist.length > 0) {
+            if (!(tldWhitelist.some(suf => host.endsWith(suf)) || isHostAllowed(host, normalizedAllowedHosts))) {
+              return false;
+            }
           }
+          return true;
+        } catch {
+          return true;
         }
-        return true;
-      } catch {
-        return true;
-      }
-    });
+      });
 
     console.log(`📊 Artigos únicos após deduplicação: ${uniqueArticles.length}`);
 
@@ -880,7 +892,7 @@ Deno.serve(async (req) => {
           // Removido ignoreDuplicates para permitir atualização de registros existentes
           { onConflict: 'url' }
         );
-    
+
       if (!error) {
         newArticles++;
       } else if (error.code !== '23505') {

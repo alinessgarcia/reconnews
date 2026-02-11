@@ -1,16 +1,18 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase, supabaseConfigError } from "@/integrations/supabase/client";
 import { ArticleCard } from "@/components/ArticleCard";
+import { FeaturedCard } from "@/components/FeaturedCard";
 import { SearchBar } from "@/components/SearchBar";
 import { Pagination } from "@/components/Pagination";
-import { Newspaper, RefreshCw, Filter, ChevronDown, ChevronUp } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Newspaper, Filter, ChevronDown, ChevronUp, Dumbbell, Globe, Rss, Clock, Share2, Bookmark, BookmarkCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerClose } from "@/components/ui/drawer";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { REGIONS_CIVILIZATIONS, EVIDENCE_TYPES, THEMES, classifyArticle } from "@/lib/utils";
+import { REGIONS_CIVILIZATIONS, EVIDENCE_TYPES, THEMES } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -35,7 +37,7 @@ interface Article {
   scraped_at: string;
 }
 
-// Sub-componente para o toggle de tradução (elimina triplicação)
+// Sub-componente para o toggle de tradução
 const TranslationToggle = ({
   translationMode,
   hasAnyTranslation,
@@ -66,7 +68,7 @@ const TranslationToggle = ({
   </div>
 );
 
-// Sub-componente para selects de filtro (elimina duplicação entre mobile e desktop)
+// Sub-componente para selects de filtro
 const FilterSelect = ({
   label,
   value,
@@ -112,11 +114,44 @@ const Index = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [timeWindowDays, setTimeWindowDays] = useState(1);
   const [translationMode, setTranslationMode] = useState<"auto" | "pt" | "original">("pt");
+  const [bookmarks, setBookmarks] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("reconnews-bookmarks");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const configError = supabaseConfigError;
 
   const ITEMS_PER_PAGE = 18;
+
+  // Bookmark functions
+  const toggleBookmark = useCallback((articleId: string) => {
+    setBookmarks(prev => {
+      const next = new Set(prev);
+      if (next.has(articleId)) {
+        next.delete(articleId);
+        toast({ title: "Removido dos favoritos" });
+      } else {
+        next.add(articleId);
+        toast({ title: "Salvo nos favoritos ⭐" });
+      }
+      localStorage.setItem("reconnews-bookmarks", JSON.stringify([...next]));
+      return next;
+    });
+  }, [toast]);
+
+  const shareArticle = useCallback(async (title: string, url: string) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url });
+      } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast({ title: "Link copiado! 📋" });
+    }
+  }, [toast]);
 
   const fetchArticles = useCallback(async () => {
     setLoading(true);
@@ -190,7 +225,7 @@ const Index = () => {
     return Array.from(new Set(articles.map(a => a.category).filter((c): c is string => !!c && !HIDDEN_CATEGORIES.has(c))));
   }, [articles]);
 
-  // Filtragem client-side (busca, fonte, categoria)
+  // Filtragem client-side
   useEffect(() => {
     let result = [...articles];
 
@@ -211,8 +246,15 @@ const Index = () => {
   }, [articles, searchQuery, selectedSource, selectedCategory]);
 
   const totalPages = Math.max(1, Math.ceil(filteredArticles.length / ITEMS_PER_PAGE));
+
+  // Featured article is the first one; remaining go to the grid
+  const featuredArticle = useMemo(() =>
+    currentPage === 1 && filteredArticles.length > 0 ? filteredArticles[0] : null,
+    [filteredArticles, currentPage]);
+
   const paginatedArticles = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const offset = currentPage === 1 ? 1 : 0; // skip featured on page 1
+    const start = (currentPage - 1) * ITEMS_PER_PAGE + offset;
     return filteredArticles.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredArticles, currentPage]);
 
@@ -221,6 +263,13 @@ const Index = () => {
       (a) => !!(a.title_pt || a.description_pt || a.extended_summary_pt)
     );
   }, [filteredArticles]);
+
+  // Stats for the dynamic hero
+  const uniqueSources = sources.length;
+  const latestScrapedAt = useMemo(() => {
+    if (articles.length === 0) return null;
+    return articles[0].scraped_at;
+  }, [articles]);
 
   const clearFilters = () => {
     setSelectedSource(null);
@@ -313,25 +362,64 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
 
-      {/* Hero Section */}
-      <header className="relative overflow-hidden bg-gradient-to-r from-primary via-primary/90 to-accent text-primary-foreground py-20 px-4">
+      {/* Dynamic Hero Section */}
+      <header className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-accent text-primary-foreground py-16 md:py-20 px-4">
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
         <div className="container mx-auto max-w-7xl relative">
-          <div className="flex items-center gap-4">
-            <img src="/android-chrome-512x512.png" alt="ReconNews Logo" className="h-16 w-16 rounded-xl shadow-lg" />
-            <div>
-              <h1 className="text-5xl font-bold tracking-tight">
-                ReconNews Brasil
-              </h1>
-              <p className="text-primary-foreground/90 text-lg font-medium">
-                Cristianismo, arqueologia, liberdade religiosa, saúde e natureza
-              </p>
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <img src="/android-chrome-512x512.png" alt="ReconNews Logo" className="h-14 w-14 md:h-16 md:w-16 rounded-xl shadow-lg" />
+              <div>
+                <h1 className="text-3xl md:text-5xl font-bold tracking-tight">
+                  ReconNews Brasil
+                </h1>
+                <p className="text-primary-foreground/80 text-sm md:text-lg font-medium mt-1">
+                  Cristianismo, arqueologia, liberdade religiosa, saúde e natureza
+                </p>
+              </div>
             </div>
+
+            {/* Live Stats */}
+            {!loading && articles.length > 0 && (
+              <div className="flex flex-wrap gap-4 md:gap-6">
+                <div className="flex items-center gap-2 text-primary-foreground/90">
+                  <Newspaper className="h-4 w-4" />
+                  <span className="text-sm font-medium">
+                    <span className="text-lg font-bold">{filteredArticles.length}</span> notícias
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-primary-foreground/90">
+                  <Globe className="h-4 w-4" />
+                  <span className="text-sm font-medium">
+                    <span className="text-lg font-bold">{uniqueSources}</span> fontes
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-primary-foreground/90">
+                  <Rss className="h-4 w-4" />
+                  <span className="text-sm font-medium">5x ao dia</span>
+                </div>
+                {latestScrapedAt && (
+                  <div className="flex items-center gap-2 text-primary-foreground/70 text-xs">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>Atualizado: {new Date(latestScrapedAt).toLocaleString("pt-BR", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Search in hero */}
+          <div className="mt-6 max-w-xl">
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Buscar notícias..."
+            />
           </div>
         </div>
       </header>
 
-      {/* Filters and Search */}
+      {/* Main Content */}
       <main className="container mx-auto max-w-7xl px-4">
         <div className="mt-8">
           <div className="flex items-center justify-between">
@@ -347,17 +435,20 @@ const Index = () => {
 
           <Separator className="my-4" />
 
-          {/* Articles Grid */}
+          {/* Articles */}
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(12)].map((_, i) => (
-                <div key={i} className="space-y-3">
-                  <Skeleton className="aspect-video w-full rounded-lg" />
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-2/3" />
-                </div>
-              ))}
+            <div className="space-y-6">
+              <Skeleton className="h-64 w-full rounded-lg" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(9)].map((_, i) => (
+                  <div key={i} className="space-y-3">
+                    <Skeleton className="aspect-video w-full rounded-lg" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                  </div>
+                ))}
+              </div>
             </div>
           ) : filteredArticles.length === 0 ? (
             <div className="text-center py-20 px-4">
@@ -377,23 +468,69 @@ const Index = () => {
             </div>
           ) : (
             <>
+              {/* Featured Article */}
+              {featuredArticle && (
+                <div className="mb-8">
+                  <FeaturedCard
+                    title={featuredArticle.title}
+                    description={featuredArticle.description || undefined}
+                    titlePt={featuredArticle.title_pt || undefined}
+                    descriptionPt={featuredArticle.description_pt || undefined}
+                    fullDescriptionPt={featuredArticle.extended_summary_pt || undefined}
+                    translationMode={translationMode}
+                    url={featuredArticle.url}
+                    source={featuredArticle.source}
+                    publishedAt={featuredArticle.published_at || undefined}
+                    imageUrl={featuredArticle.image_url || undefined}
+                    category={featuredArticle.category || undefined}
+                  />
+                </div>
+              )}
+
+              {/* Article Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {paginatedArticles.map((article) => (
-                  <ArticleCard
-                    key={article.id}
-                    title={article.title}
-                    description={article.description || undefined}
-                    titlePt={article.title_pt || undefined}
-                    descriptionPt={article.description_pt || undefined}
-                    fullDescriptionPt={article.extended_summary_pt || undefined}
-                    translationProvider={article.translation_provider || undefined}
-                    translationMode={translationMode}
-                    url={article.url}
-                    source={article.source}
-                    publishedAt={article.published_at || undefined}
-                    imageUrl={article.image_url || undefined}
-                    category={article.category || undefined}
-                  />
+                  <div key={article.id} className="relative group/actions">
+                    <ArticleCard
+                      title={article.title}
+                      description={article.description || undefined}
+                      titlePt={article.title_pt || undefined}
+                      descriptionPt={article.description_pt || undefined}
+                      fullDescriptionPt={article.extended_summary_pt || undefined}
+                      translationProvider={article.translation_provider || undefined}
+                      translationMode={translationMode}
+                      url={article.url}
+                      source={article.source}
+                      publishedAt={article.published_at || undefined}
+                      imageUrl={article.image_url || undefined}
+                      category={article.category || undefined}
+                    />
+                    {/* Share & Bookmark overlay */}
+                    <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover/actions:opacity-100 transition-opacity duration-200 z-10">
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-8 w-8 rounded-full shadow-md bg-background/80 backdrop-blur-sm hover:bg-background"
+                        onClick={(e) => { e.stopPropagation(); shareArticle(article.title, article.url); }}
+                        title="Compartilhar"
+                      >
+                        <Share2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-8 w-8 rounded-full shadow-md bg-background/80 backdrop-blur-sm hover:bg-background"
+                        onClick={(e) => { e.stopPropagation(); toggleBookmark(article.id); }}
+                        title={bookmarks.has(article.id) ? "Remover favorito" : "Salvar"}
+                      >
+                        {bookmarks.has(article.id) ? (
+                          <BookmarkCheck className="h-3.5 w-3.5 text-primary" />
+                        ) : (
+                          <Bookmark className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 ))}
               </div>
               <div className="mt-6">
@@ -408,19 +545,37 @@ const Index = () => {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-gradient-to-b from-background to-muted/20 border-t border-border mt-20 py-12">
+      {/* Redesigned Footer */}
+      <footer className="bg-gradient-to-b from-background to-muted/30 border-t border-border mt-20 py-12">
         <div className="container mx-auto max-w-7xl px-4">
-          <div className="grid md:grid-cols-2 gap-8 mb-8 justify-items-center text-center">
+          <div className="grid md:grid-cols-3 gap-8 mb-8">
+            {/* Brand */}
             <div>
-              <div className="flex items-center justify-center gap-3 mb-3">
+              <div className="flex items-center gap-3 mb-3">
                 <img src="/favicon-32x32.png" alt="ReconNews Logo" className="h-8 w-8 rounded-md" />
                 <h4 className="font-bold text-lg">ReconNews</h4>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Notícias cristãs, arqueologia, liberdade religiosa, saúde e bem‑estar, natureza e plantas medicinais.
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Agregador automático de notícias sobre arqueologia cristã, liberdade religiosa, saúde e bem‑estar. Atualizado 5x ao dia.
               </p>
             </div>
+
+            {/* Navegação */}
+            <div>
+              <h4 className="font-semibold text-sm mb-3">NAVEGAÇÃO</h4>
+              <ul className="text-sm text-muted-foreground space-y-2">
+                <li>
+                  <Link to="/" className="hover:text-primary transition-colors">📰 Notícias</Link>
+                </li>
+                <li>
+                  <Link to="/exercicios" className="hover:text-primary transition-colors">
+                    💪 Exercícios ({238})
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Cobertura */}
             <div>
               <h4 className="font-semibold text-sm mb-3">COBERTURA</h4>
               <ul className="text-sm text-muted-foreground space-y-2">
@@ -429,12 +584,21 @@ const Index = () => {
                 <li>✓ Saúde, Bem‑Estar e Alimentos</li>
                 <li>✓ Dicas de Exercícios 40+</li>
                 <li>✓ Natureza e Plantas Medicinais</li>
+                <li>✓ Dieta Proteica e Saladas</li>
               </ul>
             </div>
           </div>
+
           <Separator className="mb-6" />
-          <div className="text-center text-sm text-muted-foreground">
+
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
             <p>© {new Date().getFullYear()} ReconNews • Todas as notícias são coletadas de fontes públicas</p>
+            {latestScrapedAt && (
+              <p className="flex items-center gap-1.5 text-xs">
+                <Clock className="h-3.5 w-3.5" />
+                Última coleta: {new Date(latestScrapedAt).toLocaleString("pt-BR")}
+              </p>
+            )}
           </div>
         </div>
       </footer>
