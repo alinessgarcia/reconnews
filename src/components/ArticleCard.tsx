@@ -8,15 +8,25 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { decodeHTML, sanitizeSummary, toProxyImage } from "@/lib/utils";
 
+// Detecta respostas de erro da API de tradução
+const isInvalidTranslation = (s?: string) => {
+  const t = (s || '').toLowerCase();
+  return (
+    t.includes('invalid source language') ||
+    t.includes('example: langpair=') ||
+    t.includes('max allowed query') ||
+    t.includes('500 chars') ||
+    t.includes('some may have no content')
+  );
+};
+
 interface ArticleCardProps {
   title: string;
   description?: string;
   titlePt?: string;
   descriptionPt?: string;
-  fullDescription?: string;
   fullDescriptionPt?: string;
   translationProvider?: string;
-  // Modo de tradução (global) vindo da página
   translationMode?: "auto" | "pt" | "original";
   url: string;
   source: string;
@@ -25,12 +35,113 @@ interface ArticleCardProps {
   category?: string;
 }
 
+// Sub-componente para o toggle de idioma (elimina duplicação)
+const LanguageToggle = ({
+  effectiveMode,
+  hasTranslation,
+  onModeChange,
+}: {
+  effectiveMode: "auto" | "pt" | "original";
+  hasTranslation: boolean;
+  onModeChange: (mode: "auto" | "pt" | "original") => void;
+}) => (
+  <div className="flex items-center gap-2">
+    <span className="text-xs text-muted-foreground">Idioma:</span>
+    <div className="flex rounded-md border border-border overflow-hidden">
+      <button
+        className={`px-2 py-1 text-xs ${effectiveMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+        onClick={() => onModeChange('auto')}
+      >Auto</button>
+      <button
+        className={`px-2 py-1 text-xs ${effectiveMode === 'pt' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${!hasTranslation ? 'opacity-50 cursor-not-allowed' : ''}`}
+        onClick={() => hasTranslation && onModeChange('pt')}
+        disabled={!hasTranslation}
+        title={hasTranslation ? 'Mostrar tradução' : 'Tradução indisponível'}
+      >PT-BR</button>
+      <button
+        className={`px-2 py-1 text-xs ${effectiveMode === 'original' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+        onClick={() => onModeChange('original')}
+      >Original</button>
+    </div>
+  </div>
+);
+
+// Sub-componente para o dialog de resumo (elimina duplicação)
+const SummaryDialog = ({
+  trigger,
+  displayTitle,
+  source,
+  formattedDate,
+  effectiveMode,
+  hasTranslation,
+  onModeChange,
+  proxiedImage,
+  imageUrl,
+  altText,
+  displayFull,
+  url,
+}: {
+  trigger: React.ReactNode;
+  displayTitle: string;
+  source: string;
+  formattedDate: string | null;
+  effectiveMode: "auto" | "pt" | "original";
+  hasTranslation: boolean;
+  onModeChange: (mode: "auto" | "pt" | "original") => void;
+  proxiedImage?: string;
+  imageUrl?: string;
+  altText: string;
+  displayFull?: string;
+  url: string;
+}) => (
+  <Dialog>
+    {trigger}
+    <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>{displayTitle}</DialogTitle>
+        {source && (
+          <DialogDescription>
+            Fonte: {source}{formattedDate ? ` • ${formattedDate}` : ''}
+          </DialogDescription>
+        )}
+      </DialogHeader>
+      <div className="flex items-center justify-end gap-2 mb-2">
+        <LanguageToggle
+          effectiveMode={effectiveMode}
+          hasTranslation={hasTranslation}
+          onModeChange={onModeChange}
+        />
+      </div>
+      {imageUrl && (
+        <img
+          src={proxiedImage || imageUrl}
+          alt={altText}
+          className="w-full h-auto rounded-md"
+        />
+      )}
+      {displayFull ? (
+        <p className="text-sm text-foreground leading-relaxed">
+          {displayFull}
+        </p>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Este artigo não fornece resumo adequado via RSS. Use "Abrir original" para ler na fonte.
+        </p>
+      )}
+      <DialogFooter className="gap-2">
+        <a href={url} target="_blank" rel="noopener noreferrer">
+          <Button size="sm">Abrir original</Button>
+        </a>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+);
+
 export const ArticleCard = ({
   title,
   description,
   titlePt,
   descriptionPt,
-  fullDescription,
   fullDescriptionPt,
   translationProvider,
   translationMode = "auto",
@@ -40,8 +151,6 @@ export const ArticleCard = ({
   imageUrl,
   category,
 }: ArticleCardProps) => {
-  // Estado local do popup para permitir alternância de idioma
-  // Por padrão, segue o modo global; se o usuário alternar no popup, usamos o local
   const [localMode, setLocalMode] = useState<"auto" | "pt" | "original" | null>(null);
   const effectiveMode = localMode ?? translationMode;
   const [clientTitlePt, setClientTitlePt] = useState<string | undefined>(undefined);
@@ -51,26 +160,21 @@ export const ArticleCard = ({
     ? format(new Date(publishedAt), "dd 'de' MMMM, yyyy", { locale: ptBR })
     : null;
 
-  // Helper para escolher texto conforme o modo
   const pickByMode = (pt?: string, original?: string) => {
     if (effectiveMode === "pt") return pt ?? original ?? "";
     if (effectiveMode === "original") return original ?? pt ?? "";
-    // auto
     return (pt && !isInvalidTranslation(pt)) ? pt : (original ?? "");
   };
 
   const displayTitle = decodeHTML(pickByMode(((titlePt && !isInvalidTranslation(titlePt)) ? titlePt : clientTitlePt), title));
   const rawDescription = pickByMode(((descriptionPt && !isInvalidTranslation(descriptionPt)) ? descriptionPt : clientDescPt), description);
   const sanitized = sanitizeSummary(rawDescription);
-  // Fallback: se a sanitização remover tudo, use o texto bruto para não ficar sem resumo
   const displayDescription = sanitized && sanitized.length > 0 ? sanitized : (rawDescription || undefined);
 
-  // Conteúdo completo do popup (preferir versão traduzida e estendida)
-  const rawFull = pickByMode((fullDescriptionPt && !isInvalidTranslation(fullDescriptionPt)) ? fullDescriptionPt : undefined, fullDescription) || rawDescription;
+  const rawFull = pickByMode((fullDescriptionPt && !isInvalidTranslation(fullDescriptionPt)) ? fullDescriptionPt : undefined, undefined) || rawDescription;
   const sanitizedFull = sanitizeSummary(rawFull);
   const displayFull = sanitizedFull && sanitizedFull.length > 0 ? sanitizedFull : (rawFull || undefined);
   
-  // Usa proxy público para evitar bloqueios de hotlink sem usar Storage
   const proxiedImage = imageUrl ? toProxyImage(imageUrl, { width: 800, height: 450, fit: 'cover', output: 'webp', dpr: 2 }) : undefined;
 
   useEffect(() => {
@@ -98,9 +202,10 @@ export const ArticleCard = ({
     })();
   }, [effectiveMode, title, description, titlePt, descriptionPt]);
 
+  const HIDDEN_CATEGORIES = new Set(['Portal Evangélico', 'Notícias Evangélicas']);
+
   const getCategoryColor = (category?: string) => {
     if (!category) return "bg-muted";
-    
     const colors: Record<string, string> = {
       "Descobertas Arqueológicas": "bg-accent",
       "Manuscritos Antigos": "bg-primary",
@@ -120,6 +225,21 @@ export const ArticleCard = ({
       "Mundo Cristão": "bg-cyan-600",
     };
     return colors[category] || "bg-primary";
+  };
+
+  // Props compartilhadas para os dialogs de resumo
+  const dialogProps = {
+    displayTitle,
+    source,
+    formattedDate,
+    effectiveMode,
+    hasTranslation,
+    onModeChange: setLocalMode as (mode: "auto" | "pt" | "original") => void,
+    proxiedImage,
+    imageUrl,
+    altText: title,
+    displayFull,
+    url,
   };
 
   return (
@@ -148,7 +268,7 @@ export const ArticleCard = ({
           ) : (
             <img src="/placeholder.svg" alt="Imagem indisponível" className="h-full w-full object-cover" />
           )}
-          {category && !new Set(['Portal Evangélico', 'Notícias Evangélicas']).has(category) && (
+          {category && !HIDDEN_CATEGORIES.has(category) && (
             <div className="absolute top-3 left-3">
               <Badge className={`${getCategoryColor(category)} text-white border-0 shadow-lg`}>
                 {category}
@@ -172,73 +292,25 @@ export const ArticleCard = ({
             {displayTitle}
           </h3>
           
-          <Dialog>
-            {displayDescription ? (
-              <DialogTrigger asChild>
-                <p
-                  className="text-sm text-muted-foreground leading-relaxed line-clamp-3 cursor-pointer"
-                  title="Abrir resumo"
-                >
-                  {displayDescription}
-                </p>
-              </DialogTrigger>
-            ) : (
-              <div className="text-sm text-muted-foreground">
-                <span className="italic">Sem resumo via RSS. Clique em "Resumo" para detalhes ou "Ler mais" para abrir o original.</span>
-              </div>
-            )}
-            <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{displayTitle}</DialogTitle>
-                {source && (
-                  <DialogDescription>
-                    Fonte: {source}{formattedDate ? ` • ${formattedDate}` : ''}
-                  </DialogDescription>
-                )}
-              </DialogHeader>
-              {/* Toggle de idioma dentro do popup */}
-              <div className="flex items-center justify-end gap-2 mb-2">
-                <span className="text-xs text-muted-foreground">Idioma:</span>
-                <div className="flex rounded-md border border-border overflow-hidden">
-                  <button
-                    className={`px-2 py-1 text-xs ${effectiveMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-                    onClick={() => setLocalMode('auto')}
-                  >Auto</button>
-                  <button
-                    className={`px-2 py-1 text-xs ${effectiveMode === 'pt' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${!hasTranslation ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => hasTranslation && setLocalMode('pt')}
-                    title={hasTranslation ? 'Mostrar tradução' : 'Tradução indisponível'}
-                    disabled={!hasTranslation}
-                  >PT-BR</button>
-                  <button
-                    className={`px-2 py-1 text-xs ${effectiveMode === 'original' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-                    onClick={() => setLocalMode('original')}
-                  >Original</button>
-                </div>
-              </div>
-              {imageUrl && (
-                <img
-                  src={proxiedImage || imageUrl}
-                  alt={title}
-                  className="w-full h-auto rounded-md"
-                />
-              )}
-              {displayFull ? (
-                <p className="text-sm text-foreground leading-relaxed">
-                  {displayFull}
-                </p>
+          <SummaryDialog
+            trigger={
+              displayDescription ? (
+                <DialogTrigger asChild>
+                  <p
+                    className="text-sm text-muted-foreground leading-relaxed line-clamp-3 cursor-pointer"
+                    title="Abrir resumo"
+                  >
+                    {displayDescription}
+                  </p>
+                </DialogTrigger>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  Este artigo não fornece resumo adequado via RSS. Use "Abrir original" para ler na fonte.
-                </p>
-              )}
-              <DialogFooter className="gap-2">
-                <a href={url} target="_blank" rel="noopener noreferrer">
-                  <Button size="sm">Abrir original</Button>
-                </a>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <div className="text-sm text-muted-foreground">
+                  <span className="italic">Sem resumo via RSS. Clique em "Resumo" para detalhes ou "Ler mais" para abrir o original.</span>
+                </div>
+              )
+            }
+            {...dialogProps}
+          />
           
           <div className="flex items-center justify-between pt-3 border-t border-border">
             {formattedDate && (
@@ -257,64 +329,16 @@ export const ArticleCard = ({
                 <span>Ler mais</span>
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-xs">
-                    Resumo
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>{displayTitle}</DialogTitle>
-                    {source && (
-                      <DialogDescription>
-                        Fonte: {source}{formattedDate ? ` • ${formattedDate}` : ''}
-                      </DialogDescription>
-                    )}
-                  </DialogHeader>
-                  {/* Toggle de idioma dentro do popup */}
-                  <div className="flex items-center justify-end gap-2 mb-2">
-                    <span className="text-xs text-muted-foreground">Idioma:</span>
-                    <div className="flex rounded-md border border-border overflow-hidden">
-                      <button
-                        className={`px-2 py-1 text-xs ${effectiveMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-                        onClick={() => setLocalMode('auto')}
-                      >Auto</button>
-                      <button
-                        className={`px-2 py-1 text-xs ${effectiveMode === 'pt' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${!hasTranslation ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        onClick={() => hasTranslation && setLocalMode('pt')}
-                        title={hasTranslation ? 'Mostrar tradução' : 'Tradução indisponível'}
-                        disabled={!hasTranslation}
-                      >PT-BR</button>
-                      <button
-                        className={`px-2 py-1 text-xs ${effectiveMode === 'original' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-                        onClick={() => setLocalMode('original')}
-                      >Original</button>
-                    </div>
-                  </div>
-                  {imageUrl && (
-                    <img
-                      src={proxiedImage || imageUrl}
-                      alt={title}
-                      className="w-full h-auto rounded-md"
-                    />
-                  )}
-                  {displayFull ? (
-                    <p className="text-sm text-foreground leading-relaxed">
-                      {displayFull}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Este artigo não fornece resumo adequado via RSS. Use "Abrir original" para ler na fonte.
-                    </p>
-                  )}
-                  <DialogFooter className="gap-2">
-                    <a href={url} target="_blank" rel="noopener noreferrer">
-                      <Button size="sm">Abrir original</Button>
-                    </a>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <SummaryDialog
+                trigger={
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-xs">
+                      Resumo
+                    </Button>
+                  </DialogTrigger>
+                }
+                {...dialogProps}
+              />
             </div>
           </div>
         </div>
@@ -322,13 +346,3 @@ export const ArticleCard = ({
     </Card>
   );
 };
-  const isInvalidTranslation = (s?: string) => {
-    const t = (s || '').toLowerCase();
-    return (
-      t.includes('invalid source language') ||
-      t.includes('example: langpair=') ||
-      t.includes('max allowed query') ||
-      t.includes('500 chars') ||
-      t.includes('some may have no content')
-    );
-  };

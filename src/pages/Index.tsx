@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase, supabaseConfigError } from "@/integrations/supabase/client";
 import { ArticleCard } from "@/components/ArticleCard";
-// Substituído por controles compactos de Select no painel de filtros
-// StatsBar removido conforme solicitação: dados visíveis não relevantes ao público
 import { SearchBar } from "@/components/SearchBar";
 import { Pagination } from "@/components/Pagination";
 import { Newspaper, RefreshCw, Filter, ChevronDown, ChevronUp } from "lucide-react";
@@ -12,10 +10,11 @@ import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, Drawer
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { REGIONS_CIVILIZATIONS, EVIDENCE_TYPES, THEMES, facetCounts, classifyArticle } from "@/lib/utils";
+import { REGIONS_CIVILIZATIONS, EVIDENCE_TYPES, THEMES, classifyArticle } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/hooks/use-mobile";
-// ContactSection removido: sistema de e-mail desativado
+
+const HIDDEN_CATEGORIES = new Set(['Portal Evangélico', 'Notícias Evangélicas']);
 
 interface Article {
   id: string;
@@ -30,19 +29,80 @@ interface Article {
   published_at?: string;
   image_url?: string;
   category?: string;
-  // Novos campos persistidos
   region?: string | null;
   evidence_type?: string | null;
   theme?: string | null;
   scraped_at: string;
 }
 
+// Sub-componente para o toggle de tradução (elimina triplicação)
+const TranslationToggle = ({
+  translationMode,
+  hasAnyTranslation,
+  onModeChange,
+}: {
+  translationMode: "auto" | "pt" | "original";
+  hasAnyTranslation: boolean;
+  onModeChange: (mode: "auto" | "pt" | "original") => void;
+}) => (
+  <div className="flex items-center gap-1">
+    <span className="text-xs text-muted-foreground">Idioma:</span>
+    <div className="flex rounded-md border border-border overflow-hidden">
+      <button
+        className={`px-2 py-1 text-xs ${translationMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+        onClick={() => onModeChange('auto')}
+      >Auto</button>
+      <button
+        className={`px-2 py-1 text-xs ${translationMode === 'pt' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${!hasAnyTranslation ? 'opacity-50 cursor-not-allowed' : ''}`}
+        onClick={() => hasAnyTranslation && onModeChange('pt')}
+        disabled={!hasAnyTranslation}
+        title={hasAnyTranslation ? 'Mostrar tradução' : 'Tradução indisponível'}
+      >PT-BR</button>
+      <button
+        className={`px-2 py-1 text-xs ${translationMode === 'original' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+        onClick={() => onModeChange('original')}
+      >Original</button>
+    </div>
+  </div>
+);
+
+// Sub-componente para selects de filtro (elimina duplicação entre mobile e desktop)
+const FilterSelect = ({
+  label,
+  value,
+  onChange,
+  options,
+  allLabel = "Todas",
+  size = "sm",
+}: {
+  label: string;
+  value: string | null;
+  onChange: (v: string | null) => void;
+  options: string[];
+  allLabel?: string;
+  size?: "sm" | "md";
+}) => (
+  <div className="space-y-1">
+    <label className={`${size === 'sm' ? 'text-xs' : 'text-sm'} font-medium text-muted-foreground`}>{label}</label>
+    <Select value={value ?? "__all__"} onValueChange={(v) => onChange(v === "__all__" ? null : v)}>
+      <SelectTrigger className={`${size === 'sm' ? 'h-8 text-xs' : 'h-10 text-sm'}`}>
+        <SelectValue placeholder={allLabel} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__all__">{allLabel}</SelectItem>
+        {options.map((o) => (
+          <SelectItem key={o} value={o}>{o}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+);
+
 const Index = () => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  // Novos filtros acadêmicos
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
@@ -51,12 +111,11 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [timeWindowDays, setTimeWindowDays] = useState(1);
-  // Modo de tradução global: auto (usa PT se disponível), pt (força PT-BR), original (força idioma original)
   const [translationMode, setTranslationMode] = useState<"auto" | "pt" | "original">("pt");
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const configError = supabaseConfigError;
-  
+
   const ITEMS_PER_PAGE = 18;
 
   const fetchArticles = useCallback(async () => {
@@ -77,20 +136,12 @@ const Index = () => {
           .order("published_at", { ascending: false })
           .limit(500);
 
-        if (selectedRegion) {
-          query = query.eq("region", selectedRegion);
-        }
-        if (selectedEvidence) {
-          query = query.eq("evidence_type", selectedEvidence);
-        }
-        if (selectedTheme) {
-          query = query.eq("theme", selectedTheme);
-        }
+        if (selectedRegion) query = query.eq("region", selectedRegion);
+        if (selectedEvidence) query = query.eq("evidence_type", selectedEvidence);
+        if (selectedTheme) query = query.eq("theme", selectedTheme);
 
         const { data, error } = await query;
-
         if (error) throw error;
-
         return data || [];
       };
 
@@ -120,10 +171,8 @@ const Index = () => {
     }
   }, [selectedRegion, selectedEvidence, selectedTheme, toast]);
 
-  // Recarrega artigos quando filtros acadêmicos mudarem para aplicar server-side
   useEffect(() => {
     fetchArticles();
-    // Resetar paginação ao alterar filtros
     setCurrentPage(1);
   }, [fetchArticles]);
 
@@ -136,33 +185,15 @@ const Index = () => {
     });
   }, [configError, toast]);
 
-  // Coletas e retranslações são 100% automatizadas via GitHub Actions; UI não oferece ações manuais.
-
-  // Contagens para filtros acadêmicos
-  const academicCounts = useMemo(() => facetCounts(articles), [articles]);
-
-  // Listas derivadas para filtros simples
   const sources = useMemo(() => Array.from(new Set(articles.map(a => a.source))), [articles]);
   const categories = useMemo(() => {
-    const hidden = new Set(['Portal Evangélico', 'Notícias Evangélicas']);
-    return Array.from(new Set(articles.map(a => a.category).filter((c): c is string => !!c && !hidden.has(c))));
-  }, [articles]);
-  const categoryCounts = useMemo(() => {
-    const hidden = new Set(['Portal Evangélico', 'Notícias Evangélicas']);
-    const counts: Record<string, number> = {};
-    for (const a of articles) {
-      const cat = a.category || undefined;
-      if (cat && !hidden.has(cat)) counts[cat] = (counts[cat] || 0) + 1;
-    }
-    counts['all'] = articles.length;
-    return counts;
+    return Array.from(new Set(articles.map(a => a.category).filter((c): c is string => !!c && !HIDDEN_CATEGORIES.has(c))));
   }, [articles]);
 
-  // Filtragem client-side adicional (busca, fonte, categoria)
+  // Filtragem client-side (busca, fonte, categoria)
   useEffect(() => {
     let result = [...articles];
 
-    // Busca por texto
     const q = (searchQuery || '').trim().toLowerCase();
     if (q) {
       result = result.filter(a => (
@@ -172,65 +203,42 @@ const Index = () => {
       ));
     }
 
-    // Filtro por fonte e categoria
-    if (selectedSource) {
-      result = result.filter(a => a.source === selectedSource);
-    }
-    if (selectedCategory) {
-      result = result.filter(a => a.category === selectedCategory);
-    }
-
-    // Filtros acadêmicos (usar valor persistido ou classificar on-the-fly)
-    if (selectedRegion) {
-      result = result.filter(a => (a.region ?? classifyArticle(a.title, a.description).region) === selectedRegion);
-    }
-    if (selectedEvidence) {
-      result = result.filter(a => (a.evidence_type ?? classifyArticle(a.title, a.description).evidenceType) === selectedEvidence);
-    }
-    if (selectedTheme) {
-      result = result.filter(a => (a.theme ?? classifyArticle(a.title, a.description).theme) === selectedTheme);
-    }
+    if (selectedSource) result = result.filter(a => a.source === selectedSource);
+    if (selectedCategory) result = result.filter(a => a.category === selectedCategory);
 
     setFilteredArticles(result);
     setCurrentPage(1);
-  }, [articles, searchQuery, selectedSource, selectedCategory, selectedRegion, selectedEvidence, selectedTheme]);
+  }, [articles, searchQuery, selectedSource, selectedCategory]);
 
-  // Paginação
   const totalPages = Math.max(1, Math.ceil(filteredArticles.length / ITEMS_PER_PAGE));
   const paginatedArticles = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredArticles.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredArticles, currentPage]);
 
-  // Verifica se há alguma tradução disponível nos artigos filtrados
   const hasAnyTranslation = useMemo(() => {
     return filteredArticles.some(
       (a) => !!(a.title_pt || a.description_pt || a.extended_summary_pt)
     );
   }, [filteredArticles]);
 
-  // Componentes auxiliares de filtros para mobile e desktop
+  const clearFilters = () => {
+    setSelectedSource(null);
+    setSelectedCategory(null);
+    setSelectedRegion(null);
+    setSelectedEvidence(null);
+    setSelectedTheme(null);
+    setSearchQuery("");
+  };
+
   const MobileFilters = () => (
     <div className="flex items-center gap-2">
-      {/* Toggle de tradução (global) */}
-      <div className="hidden sm:flex items-center gap-1">
-        <span className="text-xs text-muted-foreground">Idioma:</span>
-        <div className="flex rounded-md border border-border overflow-hidden">
-          <button
-            className={`px-2 py-1 text-xs ${translationMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-            onClick={() => setTranslationMode('auto')}
-          >Auto</button>
-          <button
-            className={`px-2 py-1 text-xs ${translationMode === 'pt' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${!hasAnyTranslation ? 'opacity-50 cursor-not-allowed' : ''}`}
-            onClick={() => hasAnyTranslation && setTranslationMode('pt')}
-            disabled={!hasAnyTranslation}
-            title={hasAnyTranslation ? 'Mostrar tradução' : 'Tradução indisponível'}
-          >PT-BR</button>
-          <button
-            className={`px-2 py-1 text-xs ${translationMode === 'original' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-            onClick={() => setTranslationMode('original')}
-          >Original</button>
-        </div>
+      <div className="hidden sm:flex">
+        <TranslationToggle
+          translationMode={translationMode}
+          hasAnyTranslation={hasAnyTranslation}
+          onModeChange={setTranslationMode}
+        />
       </div>
       <Drawer>
         <DrawerTrigger asChild>
@@ -245,118 +253,24 @@ const Index = () => {
           </DrawerHeader>
           <div className="space-y-4">
             <SearchBar value={searchQuery} onChange={setSearchQuery} />
-            {/* Toggle de tradução dentro do Drawer (mobile) */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Idioma:</span>
-              <div className="flex rounded-md border border-border overflow-hidden">
-                <button
-                  className={`px-2 py-1 text-xs ${translationMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-                  onClick={() => setTranslationMode('auto')}
-                >Auto</button>
-                <button
-                  className={`px-2 py-1 text-xs ${translationMode === 'pt' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${!hasAnyTranslation ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={() => hasAnyTranslation && setTranslationMode('pt')}
-                  disabled={!hasAnyTranslation}
-                  title={hasAnyTranslation ? 'Mostrar tradução' : 'Tradução indisponível'}
-                >PT-BR</button>
-                <button
-                  className={`px-2 py-1 text-xs ${translationMode === 'original' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-                  onClick={() => setTranslationMode('original')}
-                >Original</button>
-              </div>
-            </div>
+            <TranslationToggle
+              translationMode={translationMode}
+              hasAnyTranslation={hasAnyTranslation}
+              onModeChange={setTranslationMode}
+            />
             <div className="grid grid-cols-1 gap-3">
-              {/* Fonte */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Fonte</label>
-                <Select value={selectedSource ?? "__all__"} onValueChange={(v) => setSelectedSource(v === "__all__" ? null : v)}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Selecione a fonte" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Todas</SelectItem>
-                    {sources.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Categoria */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Categoria</label>
-                <Select value={selectedCategory ?? "__all__"} onValueChange={(v) => setSelectedCategory(v === "__all__" ? null : v)}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Selecione a categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Todas</SelectItem>
-                    {categories.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Taxonomia Acadêmica */}
-              <div className="grid grid-cols-1 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Região/Civilizações</label>
-                  <Select value={selectedRegion ?? "__all__"} onValueChange={(v) => setSelectedRegion(v === "__all__" ? null : v)}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Todas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">Todas</SelectItem>
-                      {REGIONS_CIVILIZATIONS.map((r) => (
-                        <SelectItem key={r} value={r}>{r}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Tipo de Evidência</label>
-                  <Select value={selectedEvidence ?? "__all__"} onValueChange={(v) => setSelectedEvidence(v === "__all__" ? null : v)}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Todas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">Todas</SelectItem>
-                      {EVIDENCE_TYPES.map((e) => (
-                        <SelectItem key={e} value={e}>{e}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Tema</label>
-                  <Select value={selectedTheme ?? "__all__"} onValueChange={(v) => setSelectedTheme(v === "__all__" ? null : v)}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">Todos</SelectItem>
-                      {THEMES.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <FilterSelect label="Fonte" value={selectedSource} onChange={setSelectedSource} options={sources} />
+              <FilterSelect label="Categoria" value={selectedCategory} onChange={setSelectedCategory} options={categories} />
+              <FilterSelect label="Região/Civilizações" value={selectedRegion} onChange={setSelectedRegion} options={REGIONS_CIVILIZATIONS} />
+              <FilterSelect label="Tipo de Evidência" value={selectedEvidence} onChange={setSelectedEvidence} options={EVIDENCE_TYPES} />
+              <FilterSelect label="Tema" value={selectedTheme} onChange={setSelectedTheme} options={THEMES} allLabel="Todos" />
             </div>
           </div>
           <DrawerFooter className="mt-4">
             <div className="flex items-center justify-between">
-              <Button variant="outline" size="sm" onClick={() => {
-                setSelectedSource(null);
-                setSelectedCategory(null);
-                setSelectedRegion(null);
-                setSelectedEvidence(null);
-                setSelectedTheme(null);
-                setSearchQuery("");
-              }}>Limpar filtros</Button>
+              <Button variant="outline" size="sm" onClick={clearFilters}>Limpar filtros</Button>
               <DrawerClose asChild>
-                <Button size="sm" className="gap-1">
-                  Aplicar
-                </Button>
+                <Button size="sm">Aplicar</Button>
               </DrawerClose>
             </div>
           </DrawerFooter>
@@ -368,119 +282,28 @@ const Index = () => {
   const DesktopFilters = () => (
     <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
       <div className="flex items-center gap-2">
-        {/* Toggle de tradução (global) */}
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground">Idioma:</span>
-          <div className="flex rounded-md border border-border overflow-hidden">
-            <button
-              className={`px-2 py-1 text-xs ${translationMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-              onClick={() => setTranslationMode('auto')}
-            >Auto</button>
-            <button
-              className={`px-2 py-1 text-xs ${translationMode === 'pt' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${!hasAnyTranslation ? 'opacity-50 cursor-not-allowed' : ''}`}
-              onClick={() => hasAnyTranslation && setTranslationMode('pt')}
-              disabled={!hasAnyTranslation}
-              title={hasAnyTranslation ? 'Mostrar tradução' : 'Tradução indisponível'}
-            >PT-BR</button>
-            <button
-              className={`px-2 py-1 text-xs ${translationMode === 'original' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-              onClick={() => setTranslationMode('original')}
-            >Original</button>
-          </div>
-        </div>
+        <TranslationToggle
+          translationMode={translationMode}
+          hasAnyTranslation={hasAnyTranslation}
+          onModeChange={setTranslationMode}
+        />
         <Button variant="outline" size="default" className="gap-1" onClick={() => setFiltersOpen(!filtersOpen)}>
           <Filter className="h-4 w-4" />
           Filtros
-          {filtersOpen ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )}
+          {filtersOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </Button>
       </div>
       <CollapsibleContent className="mt-4 grid grid-cols-3 gap-4">
         <div className="col-span-3">
           <SearchBar value={searchQuery} onChange={setSearchQuery} />
         </div>
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-muted-foreground">Fonte</label>
-          <Select value={selectedSource ?? "__all__"} onValueChange={(v) => setSelectedSource(v === "__all__" ? null : v)}>
-            <SelectTrigger className="h-10 text-sm">
-              <SelectValue placeholder="Todas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todas</SelectItem>
-              {sources.map((s) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-muted-foreground">Categoria</label>
-          <Select value={selectedCategory ?? "__all__"} onValueChange={(v) => setSelectedCategory(v === "__all__" ? null : v)}>
-            <SelectTrigger className="h-10 text-sm">
-              <SelectValue placeholder="Todas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todas</SelectItem>
-              {categories.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-muted-foreground">Região/Civilizações</label>
-          <Select value={selectedRegion ?? "__all__"} onValueChange={(v) => setSelectedRegion(v === "__all__" ? null : v)}>
-            <SelectTrigger className="h-10 text-sm">
-              <SelectValue placeholder="Todas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todas</SelectItem>
-              {REGIONS_CIVILIZATIONS.map((r) => (
-                <SelectItem key={r} value={r}>{r}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-muted-foreground">Tipo de Evidência</label>
-          <Select value={selectedEvidence ?? "__all__"} onValueChange={(v) => setSelectedEvidence(v === "__all__" ? null : v)}>
-            <SelectTrigger className="h-10 text-sm">
-              <SelectValue placeholder="Todas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todas</SelectItem>
-              {EVIDENCE_TYPES.map((e) => (
-                <SelectItem key={e} value={e}>{e}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-muted-foreground">Tema</label>
-          <Select value={selectedTheme ?? "__all__"} onValueChange={(v) => setSelectedTheme(v === "__all__" ? null : v)}>
-            <SelectTrigger className="h-10 text-sm">
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos</SelectItem>
-              {THEMES.map((t) => (
-                <SelectItem key={t} value={t}>{t}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <FilterSelect label="Fonte" value={selectedSource} onChange={setSelectedSource} options={sources} size="md" />
+        <FilterSelect label="Categoria" value={selectedCategory} onChange={setSelectedCategory} options={categories} size="md" />
+        <FilterSelect label="Região/Civilizações" value={selectedRegion} onChange={setSelectedRegion} options={REGIONS_CIVILIZATIONS} size="md" />
+        <FilterSelect label="Tipo de Evidência" value={selectedEvidence} onChange={setSelectedEvidence} options={EVIDENCE_TYPES} size="md" />
+        <FilterSelect label="Tema" value={selectedTheme} onChange={setSelectedTheme} options={THEMES} allLabel="Todos" size="md" />
         <div className="col-span-3 flex items-center justify-start gap-2">
-          <Button variant="outline" size="default" onClick={() => {
-            setSelectedSource(null);
-            setSelectedCategory(null);
-            setSelectedRegion(null);
-            setSelectedEvidence(null);
-            setSelectedTheme(null);
-            setSearchQuery("");
-          }}>Limpar filtros</Button>
+          <Button variant="outline" size="default" onClick={clearFilters}>Limpar filtros</Button>
           <Button size="default" onClick={() => setFiltersOpen(false)}>Aplicar</Button>
         </div>
       </CollapsibleContent>
@@ -489,32 +312,26 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      
+
       {/* Hero Section */}
       <header className="relative overflow-hidden bg-gradient-to-r from-primary via-primary/90 to-accent text-primary-foreground py-20 px-4">
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
         <div className="container mx-auto max-w-7xl relative">
-          <div className="flex items-center justify-between flex-wrap gap-6">
-            <div className="flex items-center gap-4">
-              <img src="/android-chrome-512x512.png" alt="ReconNews Logo" className="h-16 w-16 rounded-xl shadow-lg" />
-              <div>
-                <h1 className="text-5xl font-bold tracking-tight">
-                  ReconNews Brasil
-                </h1>
-                <p className="text-primary-foreground/90 text-lg font-medium">
-                  Cristianismo, arqueologia, liberdade religiosa, saúde e natureza
-                </p>
-                {/* Removido texto sobre horários/frequência de atualização conforme solicitação */}
-              </div>
+          <div className="flex items-center gap-4">
+            <img src="/android-chrome-512x512.png" alt="ReconNews Logo" className="h-16 w-16 rounded-xl shadow-lg" />
+            <div>
+              <h1 className="text-5xl font-bold tracking-tight">
+                ReconNews Brasil
+              </h1>
+              <p className="text-primary-foreground/90 text-lg font-medium">
+                Cristianismo, arqueologia, liberdade religiosa, saúde e natureza
+              </p>
             </div>
-            <div className="flex gap-3" />
           </div>
-
-          {/* Área de estatísticas removida */}
         </div>
       </header>
 
-      {/* Filters and Search (Compacto, com Drawer no mobile e Collapsible no desktop) */}
+      {/* Filters and Search */}
       <main className="container mx-auto max-w-7xl px-4">
         <div className="mt-8">
           <div className="flex items-center justify-between">
@@ -522,7 +339,6 @@ const Index = () => {
             {isMobile ? <MobileFilters /> : <DesktopFilters />}
           </div>
 
-          
           <div className="flex items-center justify-between mt-4">
             <p className="text-sm text-muted-foreground">
               {filteredArticles.length} resultados (últimos {timeWindowDays} {timeWindowDays === 1 ? "dia" : "dias"})
@@ -587,7 +403,6 @@ const Index = () => {
                   onPageChange={setCurrentPage}
                 />
               </div>
-              {/* Área de Contato removida */}
             </>
           )}
         </div>
@@ -619,7 +434,7 @@ const Index = () => {
           </div>
           <Separator className="mb-6" />
           <div className="text-center text-sm text-muted-foreground">
-            <p>© 2025 ReconNews • Todas as notícias são coletadas de fontes públicas</p>
+            <p>© {new Date().getFullYear()} ReconNews • Todas as notícias são coletadas de fontes públicas</p>
           </div>
         </div>
       </footer>
