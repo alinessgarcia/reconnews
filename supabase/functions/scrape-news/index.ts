@@ -573,6 +573,10 @@ const RSS_FEEDS = [
   { url: 'https://www.mundoboaforma.com.br/feed/', source: 'Mundo Boa Forma', category: 'Dieta Proteica' },
   { url: 'https://www.ativo.com/feed/', source: 'Ativo', category: 'Dieta e Exercícios' },
   { url: 'https://receitasninja.com/feed/', source: 'Receitas Ninja', category: 'Saladas e Receitas' },
+
+  // 📰 Atualidades Brasil
+  { url: 'https://agenciabrasil.ebc.com.br/rss/geral/feed.xml', source: 'Agência Brasil', category: 'Atualidades Brasil' },
+  { url: 'https://www.cnnbrasil.com.br/feed/', source: 'CNN Brasil', category: 'Atualidades Brasil' },
 ];
 
 // Política editorial: fontes brasileiras e portuguesas
@@ -583,6 +587,7 @@ const FEEDS_ALLOWLIST = new Set(
     'Minha Vida', 'Tua Saúde', 'Veja Saúde', 'Einstein Vida Saudável', 'G1 Saúde',
     'eCycle', 'CicloVivo', 'GreenMe', 'Tua Saúde – Plantas',
     'Mundo Boa Forma', 'Ativo', 'Receitas Ninja',
+    'Agência Brasil', 'CNN Brasil',
   ]
 );
 
@@ -607,6 +612,7 @@ const DEFAULT_ALLOWED_HOSTS = [
   // Portais genéricos BR confiáveis
   'folha.uol.com.br', 'estadao.com.br', 'terra.com.br',
   'r7.com', 'correiobraziliense.com.br', 'gazetadopovo.com.br',
+  'agenciabrasil.ebc.com.br', 'cnnbrasil.com.br',
   'bbc.com',
 ];
 

@@ -15,6 +15,7 @@ const DEFAULT_ALLOWED_HOSTS = [
   'mundoboaforma.com.br', 'ativo.com', 'receitasninja.com',
   'folha.uol.com.br', 'estadao.com.br', 'terra.com.br',
   'r7.com', 'correiobraziliense.com.br', 'gazetadopovo.com.br',
+  'agenciabrasil.ebc.com.br', 'cnnbrasil.com.br',
   'bbc.com',
 ];
 

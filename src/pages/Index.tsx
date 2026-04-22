@@ -609,7 +609,7 @@ const Index = () => {
         <div className="absolute inset-0 -z-10 bg-[var(--gradient-hero-glow)]" />
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_100%,rgba(255,255,255,0.16),transparent_35%)]" />
 
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
           <div className="space-y-6 text-white">
             <span className="inline-flex items-center rounded-full border border-amber-200/35 bg-amber-300/20 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-amber-100">
               Curadoria e Coleta Inteligente
@@ -630,41 +630,39 @@ const Index = () => {
               <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Buscar noticias, temas e fontes..." />
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-xl">
-                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-200">Resultados</p>
-                <p className="mt-1 font-headline text-2xl font-extrabold text-white">{filteredArticles.length}</p>
-              </div>
-              <div className="rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-xl">
-                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-200">Fontes</p>
-                <p className="mt-1 font-headline text-2xl font-extrabold text-white">{sources.length}</p>
-              </div>
-              <div className="rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-xl">
-                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-200">Janela</p>
-                <p className="mt-1 font-headline text-2xl font-extrabold text-white">
-                  {isShowingHistorical ? "Hist." : `${timeWindowDays}d`}
-                </p>
-              </div>
+            <div className="flex flex-wrap gap-2">
+              <Link to="/" className="rounded-full border border-white/35 bg-white/15 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/25">
+                Ver ultimas noticias
+              </Link>
+              <Link to="/?categoria=fe" className="rounded-full border border-white/35 bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20">
+                Fe e Vida Crista
+              </Link>
+              <Link to="/?categoria=saude" className="rounded-full border border-white/35 bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20">
+                Saude e Bem-Estar
+              </Link>
+              <Link to="/exercicios" className="rounded-full border border-white/35 bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20">
+                Exercicios 40+
+              </Link>
             </div>
           </div>
 
           <div className="animate-float-slow rounded-[1.75rem] border border-white/15 bg-white/12 p-6 text-white backdrop-blur-2xl">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-200">Painel em foco</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-200">Como aproveitar melhor</p>
             <h2 className="mt-2 text-2xl font-extrabold">
-              {activeCatMeta ? `${activeCatMeta.emoji} ${activeCatMeta.label}` : "Feed global ReconNews"}
+              Leia mais rapido com menos ruido
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-slate-200">
-              Camada visual inspirada no Stitch com profundidade tonal, foco em leitura e filtros rapidos.
-            </p>
-            <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-xl bg-white/10 p-3">
-                <p className="text-slate-300">Categorias</p>
-                <p className="font-headline text-xl font-bold">{CONTENT_CATEGORIES.length}</p>
-              </div>
-              <div className="rounded-xl bg-white/10 p-3">
-                <p className="text-slate-300">Atualizacao</p>
-                <p className="font-headline text-xl font-bold">Automatica</p>
-              </div>
+            <ul className="mt-4 space-y-2 text-sm leading-relaxed text-slate-100">
+              <li>Use a busca para encontrar assunto, personagem ou tema.</li>
+              <li>Aplique filtros para refinar por fonte, regiao e tipo de evidencia.</li>
+              <li>Abra o resumo e salve favoritos para revisar depois.</li>
+            </ul>
+            <div className="mt-5 rounded-xl border border-white/20 bg-white/10 p-3 text-sm">
+              <p className="text-slate-200">Atualizacao automatica do feed</p>
+              <p className="mt-1 font-semibold text-white">
+                {latestScrapedAt
+                  ? `Ultima coleta: ${new Date(latestScrapedAt).toLocaleString("pt-BR")}`
+                  : "Coleta em andamento..."}
+              </p>
             </div>
           </div>
         </div>
@@ -679,8 +677,10 @@ const Index = () => {
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 {isShowingHistorical
-                  ? `${filteredArticles.length} resultados no historico completo`
-                  : `${filteredArticles.length} resultados nos ultimos ${timeWindowDays} ${timeWindowDays === 1 ? "dia" : "dias"}`}
+                  ? "Mostrando historico completo enquanto novas coletas sao processadas."
+                  : latestScrapedAt
+                    ? `Ultima atualizacao em ${new Date(latestScrapedAt).toLocaleString("pt-BR")}`
+                    : "Atualizando feed automaticamente durante o dia."}
               </p>
             </div>
             {isMobile ? <MobileFilters /> : <DesktopFilters />}
