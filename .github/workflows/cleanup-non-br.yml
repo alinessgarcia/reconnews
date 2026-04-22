@@ -33,6 +33,7 @@ jobs:
         run: |
           set -e
           http_code=$(curl -sS -w "%{http_code}" -o output.json -X POST \
+            -H "apikey: ${TOKEN}" \
             -H "Authorization: Bearer ${TOKEN}" \
             -H "Content-Type: application/json" \
             -d '{}' \

@@ -573,8 +573,30 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
+function getApiKey(req: Request): string {
+  return (
+    req.headers.get('apikey') ??
+    req.headers.get('x-api-key') ??
+    ''
+  ).trim();
+}
+
 async function isAuthorizedScrapeCaller(req: Request, supabase: ReturnType<typeof createClient>): Promise<boolean> {
+  const expectedServiceKey = (
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ??
+    Deno.env.get('SERVICE_ROLE_KEY') ??
+    Deno.env.get('RECON_SERVICE_ROLE_KEY') ??
+    ''
+  ).trim();
+  const apiKey = getApiKey(req);
   const token = getBearerToken(req);
+
+  // Supports new sb_secret_* key flow and legacy service_role JWT flow.
+  if (expectedServiceKey) {
+    if (apiKey && apiKey === expectedServiceKey) return true;
+    if (token && token === expectedServiceKey) return true;
+  }
+
   if (!token) return false;
 
   const payload = decodeJwtPayload(token);

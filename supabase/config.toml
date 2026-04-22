@@ -1,10 +1,10 @@
 project_id = "kkhqybinqwrndcoeotnu"
 
 [functions.scrape-news]
-verify_jwt = true
+verify_jwt = false
 
 [functions.retranslate-articles]
-verify_jwt = true
+verify_jwt = false
 
 [functions.cleanup-non-br]
-verify_jwt = true
+verify_jwt = false

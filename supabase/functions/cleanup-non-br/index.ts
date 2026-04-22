@@ -5,6 +5,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function getBearerToken(req: Request): string {
+  const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization');
+  if (!authHeader) return '';
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return '';
+  return authHeader.slice(7).trim();
+}
+
+function getApiKey(req: Request): string {
+  return (req.headers.get('apikey') ?? req.headers.get('x-api-key') ?? '').trim();
+}
+
 function getHost(url: string): string | null {
   try {
     return new URL(url).hostname.toLowerCase();
@@ -21,6 +32,16 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? Deno.env.get('PROJECT_URL') ?? Deno.env.get('RECON_SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY') ?? Deno.env.get('RECON_SERVICE_ROLE_KEY')!;
+    const bearerToken = getBearerToken(req);
+    const apiKey = getApiKey(req);
+
+    if (!supabaseServiceKey || (bearerToken !== supabaseServiceKey && apiKey !== supabaseServiceKey)) {
+      return new Response(JSON.stringify({ success: false, error: 'Unauthorized caller' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 403,
+      });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const tld = (Deno.env.get('RECON_COUNTRY_ONLY') || 'BR').toUpperCase();

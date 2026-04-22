@@ -71,6 +71,7 @@ jobs:
           max=3
           while [ $attempt -le $max ]; do
             http_code=$(curl -sS -w "%{http_code}" -o output.json -X POST \
+              -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
               -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
               -H "Content-Type: application/json" \
               -d '{}' \
