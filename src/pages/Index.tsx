@@ -5,7 +5,17 @@ import { FeaturedCard } from "@/components/FeaturedCard";
 import { SearchBar } from "@/components/SearchBar";
 import { Pagination } from "@/components/Pagination";
 import { Link, useSearchParams } from "react-router-dom";
-import { Newspaper, Filter, ChevronDown, ChevronUp, Dumbbell, Clock, Share2, Bookmark, BookmarkCheck, X } from "lucide-react";
+import {
+  Newspaper,
+  Filter,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Share2,
+  Bookmark,
+  BookmarkCheck,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerClose } from "@/components/ui/drawer";
@@ -13,28 +23,131 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { REGIONS_CIVILIZATIONS, EVIDENCE_TYPES, THEMES } from "@/lib/utils";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CONTENT_CATEGORIES } from "@/components/Navbar";
 
-// Keywords for each content category — used to filter articles by title/description
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  fe: ["fé", "cristão", "cristã", "jesus", "deus", "bíbli", "bibli", "igreja", "evangél", "evangel", "pastor", "culto", "oração", "devocional", "espírit", "gospel", "teolog", "louvor", "pregação", "testemunho", "salvação", "batismo", "católic", "protestant", "doutrina", "crente", "missão", "missionár"],
-  liberdade: ["liberda", "perseguiç", "perseguic", "religiosa", "religioso", "persecut", "freedom", "religious", "tribunal", "lei", "direito", "constituiç", "liberdade de culto", "intolerância", "discriminaç", "preso por fé"],
-  saude: ["saúde", "saude", "bem-estar", "bem estar", "aliment", "nutriç", "nutric", "vitamina", "mineral", "health", "wellness", "food", "diet", "nutrition", "saudável", "saudavel", "benefício", "beneficio", "cura", "prevenç", "prevenc", "imunidade", "colesterol", "diabetes", "pressão", "pressao"],
-  natureza: ["natureza", "planta", "medicin", "erva", "fitoterápic", "fitoterapic", "natural", "chá de", "cha de", "folha", "raiz", "herbal", "herb", "botanical", "remédio natural", "remedio natural", "floresta", "biodiversidade", "orgânic", "organic"],
-  dieta: ["dieta", "proteí", "protei", "proteic", "salada", "receita", "carne", "frango", "peixe", "ovo", "legume", "verdura", "low carb", "keto", "protein", "recipe", "meal", "calorias", "emagre", "musculaç", "whey", "suplemento", "treino"],
+  fe: [
+    "fé",
+    "cristão",
+    "cristã",
+    "jesus",
+    "deus",
+    "bíblia",
+    "igreja",
+    "evangel",
+    "pastor",
+    "culto",
+    "oração",
+    "devocional",
+    "espirit",
+    "gospel",
+    "teolog",
+    "louvor",
+    "pregação",
+    "testemunho",
+    "salvação",
+    "batismo",
+    "católic",
+    "protestant",
+    "doutrina",
+    "crente",
+    "missão",
+    "missionár",
+  ],
+  liberdade: [
+    "liberda",
+    "persegui",
+    "religiosa",
+    "religioso",
+    "persecut",
+    "freedom",
+    "religious",
+    "tribunal",
+    "lei",
+    "direito",
+    "constitui",
+    "liberdade de culto",
+    "intolerância",
+    "discrimina",
+    "preso por fé",
+  ],
+  saude: [
+    "saúde",
+    "saude",
+    "bem-estar",
+    "aliment",
+    "nutri",
+    "vitamina",
+    "mineral",
+    "health",
+    "wellness",
+    "food",
+    "diet",
+    "nutrition",
+    "saudável",
+    "benefício",
+    "cura",
+    "preven",
+    "imunidade",
+    "colesterol",
+    "diabetes",
+    "pressão",
+  ],
+  natureza: [
+    "natureza",
+    "planta",
+    "medicin",
+    "erva",
+    "fitoterap",
+    "natural",
+    "chá de",
+    "folha",
+    "raiz",
+    "herbal",
+    "botanical",
+    "remédio natural",
+    "floresta",
+    "biodiversidade",
+    "organic",
+  ],
+  dieta: [
+    "dieta",
+    "protei",
+    "salada",
+    "receita",
+    "carne",
+    "frango",
+    "peixe",
+    "ovo",
+    "legume",
+    "verdura",
+    "low carb",
+    "keto",
+    "protein",
+    "recipe",
+    "meal",
+    "calorias",
+    "emagre",
+    "muscula",
+    "whey",
+    "suplemento",
+    "treino",
+  ],
 };
 
-function matchesCategory(article: { title: string; description?: string; title_pt?: string; description_pt?: string; category?: string }, catId: string): boolean {
+function matchesCategory(
+  article: { title: string; description?: string; title_pt?: string; description_pt?: string; category?: string },
+  catId: string,
+): boolean {
   const keywords = CATEGORY_KEYWORDS[catId];
-  if (!keywords) return true; // unknown category = show all
-  const text = `${article.title} ${article.description || ''} ${article.title_pt || ''} ${article.description_pt || ''} ${article.category || ''}`.toLowerCase();
-  return keywords.some(kw => text.includes(kw));
+  if (!keywords) return true;
+  const text = `${article.title} ${article.description || ""} ${article.title_pt || ""} ${article.description_pt || ""} ${article.category || ""}`.toLowerCase();
+  return keywords.some((kw) => text.includes(kw));
 }
 
-
-const HIDDEN_CATEGORIES = new Set(['Portal Evangélico', 'Notícias Evangélicas']);
+const HIDDEN_CATEGORIES = new Set(["Portal Evangélico", "Notícias Evangélicas"]);
 
 interface Article {
   id: string;
@@ -55,7 +168,6 @@ interface Article {
   scraped_at: string;
 }
 
-// Sub-componente para o toggle de tradução
 const TranslationToggle = ({
   translationMode,
   hasAnyTranslation,
@@ -65,28 +177,33 @@ const TranslationToggle = ({
   hasAnyTranslation: boolean;
   onModeChange: (mode: "auto" | "pt" | "original") => void;
 }) => (
-  <div className="flex items-center gap-1">
-    <span className="text-xs text-muted-foreground">Idioma:</span>
-    <div className="flex rounded-md border border-border overflow-hidden">
+  <div className="flex items-center gap-2">
+    <span className="text-xs font-medium text-muted-foreground">Idioma:</span>
+    <div className="flex overflow-hidden rounded-full border border-secondary/20 bg-card">
       <button
-        className={`px-2 py-1 text-xs ${translationMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-        onClick={() => onModeChange('auto')}
-      >Auto</button>
+        className={`px-2.5 py-1 text-xs ${translationMode === "auto" ? "bg-secondary text-secondary-foreground" : "bg-transparent"}`}
+        onClick={() => onModeChange("auto")}
+      >
+        Auto
+      </button>
       <button
-        className={`px-2 py-1 text-xs ${translationMode === 'pt' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${!hasAnyTranslation ? 'opacity-50 cursor-not-allowed' : ''}`}
-        onClick={() => hasAnyTranslation && onModeChange('pt')}
+        className={`px-2.5 py-1 text-xs ${translationMode === "pt" ? "bg-secondary text-secondary-foreground" : "bg-transparent"} ${!hasAnyTranslation ? "cursor-not-allowed opacity-50" : ""}`}
+        onClick={() => hasAnyTranslation && onModeChange("pt")}
         disabled={!hasAnyTranslation}
-        title={hasAnyTranslation ? 'Mostrar tradução' : 'Tradução indisponível'}
-      >PT-BR</button>
+        title={hasAnyTranslation ? "Mostrar tradução" : "Tradução indisponível"}
+      >
+        PT-BR
+      </button>
       <button
-        className={`px-2 py-1 text-xs ${translationMode === 'original' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-        onClick={() => onModeChange('original')}
-      >Original</button>
+        className={`px-2.5 py-1 text-xs ${translationMode === "original" ? "bg-secondary text-secondary-foreground" : "bg-transparent"}`}
+        onClick={() => onModeChange("original")}
+      >
+        Original
+      </button>
     </div>
   </div>
 );
 
-// Sub-componente para selects de filtro
 const FilterSelect = ({
   label,
   value,
@@ -102,16 +219,18 @@ const FilterSelect = ({
   allLabel?: string;
   size?: "sm" | "md";
 }) => (
-  <div className="space-y-1">
-    <label className={`${size === 'sm' ? 'text-xs' : 'text-sm'} font-medium text-muted-foreground`}>{label}</label>
+  <div className="space-y-1.5">
+    <label className={`${size === "sm" ? "text-xs" : "text-sm"} font-medium text-muted-foreground`}>{label}</label>
     <Select value={value ?? "__all__"} onValueChange={(v) => onChange(v === "__all__" ? null : v)}>
-      <SelectTrigger className={`${size === 'sm' ? 'h-8 text-xs' : 'h-10 text-sm'}`}>
+      <SelectTrigger className={`${size === "sm" ? "h-9 text-xs" : "h-11 text-sm"} rounded-full border-transparent bg-muted/90`}>
         <SelectValue placeholder={allLabel} />
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="__all__">{allLabel}</SelectItem>
         {options.map((o) => (
-          <SelectItem key={o} value={o}>{o}</SelectItem>
+          <SelectItem key={o} value={o}>
+            {o}
+          </SelectItem>
         ))}
       </SelectContent>
     </Select>
@@ -121,7 +240,7 @@ const FilterSelect = ({
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeCategoria = searchParams.get("categoria");
-  const activeCatMeta = CONTENT_CATEGORIES.find(c => c.id === activeCategoria);
+  const activeCatMeta = CONTENT_CATEGORIES.find((c) => c.id === activeCategoria);
 
   const [articles, setArticles] = useState<Article[]>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
@@ -135,63 +254,80 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [timeWindowDays, setTimeWindowDays] = useState(1);
+  const [isShowingHistorical, setIsShowingHistorical] = useState(false);
   const [translationMode, setTranslationMode] = useState<"auto" | "pt" | "original">("pt");
   const [bookmarks, setBookmarks] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem("reconnews-bookmarks");
       return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch { return new Set(); }
+    } catch {
+      return new Set();
+    }
   });
+
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const configError = supabaseConfigError;
 
   const ITEMS_PER_PAGE = 18;
 
-  // Bookmark functions
-  const toggleBookmark = useCallback((articleId: string) => {
-    setBookmarks(prev => {
-      const next = new Set(prev);
-      if (next.has(articleId)) {
-        next.delete(articleId);
-        toast({ title: "Removido dos favoritos" });
-      } else {
-        next.add(articleId);
-        toast({ title: "Salvo nos favoritos ⭐" });
-      }
-      localStorage.setItem("reconnews-bookmarks", JSON.stringify([...next]));
-      return next;
-    });
-  }, [toast]);
+  const toggleBookmark = useCallback(
+    (articleId: string) => {
+      setBookmarks((prev) => {
+        const next = new Set(prev);
+        if (next.has(articleId)) {
+          next.delete(articleId);
+          toast({ title: "Removido dos favoritos" });
+        } else {
+          next.add(articleId);
+          toast({ title: "Salvo nos favoritos" });
+        }
+        localStorage.setItem("reconnews-bookmarks", JSON.stringify([...next]));
+        return next;
+      });
+    },
+    [toast],
+  );
 
-  const shareArticle = useCallback(async (title: string, url: string) => {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title, url });
-      } catch { /* user cancelled */ }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast({ title: "Link copiado! 📋" });
-    }
-  }, [toast]);
+  const shareArticle = useCallback(
+    async (title: string, url: string) => {
+      if (navigator.share) {
+        try {
+          await navigator.share({ title, url });
+        } catch {
+          // user canceled share
+        }
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast({ title: "Link copiado" });
+      }
+    },
+    [toast],
+  );
 
   const fetchArticles = useCallback(async () => {
     setLoading(true);
+    setIsShowingHistorical(false);
+
     if (!supabase) {
       setArticles([]);
       setLoading(false);
       return;
     }
+
     try {
-      const runFetch = async (days: number) => {
-        const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      const runFetch = async (days?: number) => {
         let query = supabase
           .from("articles")
           .select("*")
-          .gte("scraped_at", cutoff)
           .order("scraped_at", { ascending: false })
           .order("published_at", { ascending: false })
           .limit(500);
+
+        if (typeof days === "number") {
+          const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+          query = query.gte("scraped_at", cutoff);
+        }
 
         if (selectedRegion) query = query.eq("region", selectedRegion);
         if (selectedEvidence) query = query.eq("evidence_type", selectedEvidence);
@@ -203,24 +339,41 @@ const Index = () => {
       };
 
       const d1 = await runFetch(1);
-      if (d1.length < 30) {
-        const d7 = await runFetch(7);
-        if (d7.length > d1.length) {
-          setTimeWindowDays(7);
-          setArticles(d7);
-        } else {
-          setTimeWindowDays(1);
-          setArticles(d1);
-        }
-      } else {
+      if (d1.length >= 30) {
         setTimeWindowDays(1);
         setArticles(d1);
+        return;
       }
+
+      const d7 = await runFetch(7);
+      if (d7.length >= 10 || d7.length > d1.length) {
+        setTimeWindowDays(7);
+        setArticles(d7);
+        return;
+      }
+
+      const d30 = await runFetch(30);
+      if (d30.length > 0) {
+        setTimeWindowDays(30);
+        setArticles(d30);
+        return;
+      }
+
+      const historical = await runFetch();
+      if (historical.length > 0) {
+        setTimeWindowDays(0);
+        setIsShowingHistorical(true);
+        setArticles(historical);
+        return;
+      }
+
+      setTimeWindowDays(1);
+      setArticles([]);
     } catch (error) {
       console.error("Erro ao buscar artigos:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar as notícias.",
+        description: "Nao foi possivel carregar as noticias.",
         variant: "destructive",
       });
     } finally {
@@ -236,57 +389,53 @@ const Index = () => {
   useEffect(() => {
     if (!configError) return;
     toast({
-      title: "Configuração do site incompleta",
+      title: "Configuracao do site incompleta",
       description: configError,
       variant: "destructive",
     });
   }, [configError, toast]);
 
-  const sources = useMemo(() => Array.from(new Set(articles.map(a => a.source))), [articles]);
+  const sources = useMemo(() => Array.from(new Set(articles.map((a) => a.source))), [articles]);
   const categories = useMemo(() => {
-    return Array.from(new Set(articles.map(a => a.category).filter((c): c is string => !!c && !HIDDEN_CATEGORIES.has(c))));
+    return Array.from(
+      new Set(articles.map((a) => a.category).filter((c): c is string => !!c && !HIDDEN_CATEGORIES.has(c))),
+    );
   }, [articles]);
 
-  // Deduplicação: normaliza o título para agrupar versões pt/en da mesma notícia
   const deduplicatedArticles = useMemo(() => {
     const normalize = (s: string) =>
-      s.toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9 ]/g, '')
-        .replace(/\s+/g, ' ')
+      s
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9 ]/g, "")
+        .replace(/\s+/g, " ")
         .trim();
+
     const seen = new Map<string, Article>();
+
     for (const a of articles) {
       const key = normalize(a.title_pt || a.title);
-      // Mantém apenas o primeiro artigo com título equivalente
-      if (!seen.has(key)) {
-        seen.set(key, a);
-      }
+      if (!seen.has(key)) seen.set(key, a);
     }
+
     return Array.from(seen.values());
   }, [articles]);
 
-  // Filtragem client-side
   useEffect(() => {
     let result = [...deduplicatedArticles];
 
-    // Apply content category filter from navbar
     if (activeCategoria && CATEGORY_KEYWORDS[activeCategoria]) {
-      result = result.filter(a => matchesCategory(a, activeCategoria));
+      result = result.filter((a) => matchesCategory(a, activeCategoria));
     }
 
-    const q = (searchQuery || '').trim().toLowerCase();
+    const q = (searchQuery || "").trim().toLowerCase();
     if (q) {
-      result = result.filter(a => (
-        `${a.title} ${a.description || ''} ${a.title_pt || ''} ${a.description_pt || ''}`
-          .toLowerCase()
-          .includes(q)
-      ));
+      result = result.filter((a) => `${a.title} ${a.description || ""} ${a.title_pt || ""} ${a.description_pt || ""}`.toLowerCase().includes(q));
     }
 
-    if (selectedSource) result = result.filter(a => a.source === selectedSource);
-    if (selectedCategory) result = result.filter(a => a.category === selectedCategory);
+    if (selectedSource) result = result.filter((a) => a.source === selectedSource);
+    if (selectedCategory) result = result.filter((a) => a.category === selectedCategory);
 
     setFilteredArticles(result);
     setCurrentPage(1);
@@ -294,21 +443,19 @@ const Index = () => {
 
   const totalPages = Math.max(1, Math.ceil(filteredArticles.length / ITEMS_PER_PAGE));
 
-  // Featured article is the first one; remaining go to the grid
-  const featuredArticle = useMemo(() =>
-    currentPage === 1 && filteredArticles.length > 0 ? filteredArticles[0] : null,
-    [filteredArticles, currentPage]);
+  const featuredArticle = useMemo(
+    () => (currentPage === 1 && filteredArticles.length > 0 ? filteredArticles[0] : null),
+    [filteredArticles, currentPage],
+  );
 
   const paginatedArticles = useMemo(() => {
-    const offset = currentPage === 1 ? 1 : 0; // skip featured on page 1
+    const offset = currentPage === 1 ? 1 : 0;
     const start = (currentPage - 1) * ITEMS_PER_PAGE + offset;
     return filteredArticles.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredArticles, currentPage]);
 
   const hasAnyTranslation = useMemo(() => {
-    return filteredArticles.some(
-      (a) => !!(a.title_pt || a.description_pt || a.extended_summary_pt)
-    );
+    return filteredArticles.some((a) => !!(a.title_pt || a.description_pt || a.extended_summary_pt));
   }, [filteredArticles]);
 
   const latestScrapedAt = useMemo(() => {
@@ -323,9 +470,7 @@ const Index = () => {
     setSelectedEvidence(null);
     setSelectedTheme(null);
     setSearchQuery("");
-    if (activeCategoria) {
-      setSearchParams({});
-    }
+    if (activeCategoria) setSearchParams({});
   };
 
   const MobileFilters = () => (
@@ -339,12 +484,12 @@ const Index = () => {
       </div>
       <Drawer>
         <DrawerTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-1">
+          <Button variant="outline" size="sm" className="gap-1 rounded-full border-secondary/20 bg-card/70">
             <Filter className="h-4 w-4" />
             Filtros
           </Button>
         </DrawerTrigger>
-        <DrawerContent className="p-4">
+        <DrawerContent className="rounded-t-3xl border-border/40 p-4">
           <DrawerHeader>
             <DrawerTitle>Filtros</DrawerTitle>
           </DrawerHeader>
@@ -358,16 +503,30 @@ const Index = () => {
             <div className="grid grid-cols-1 gap-3">
               <FilterSelect label="Fonte" value={selectedSource} onChange={setSelectedSource} options={sources} />
               <FilterSelect label="Categoria" value={selectedCategory} onChange={setSelectedCategory} options={categories} />
-              <FilterSelect label="Região/Civilizações" value={selectedRegion} onChange={setSelectedRegion} options={REGIONS_CIVILIZATIONS} />
-              <FilterSelect label="Tipo de Evidência" value={selectedEvidence} onChange={setSelectedEvidence} options={EVIDENCE_TYPES} />
+              <FilterSelect
+                label="Regiao/Civilizacoes"
+                value={selectedRegion}
+                onChange={setSelectedRegion}
+                options={REGIONS_CIVILIZATIONS}
+              />
+              <FilterSelect
+                label="Tipo de Evidencia"
+                value={selectedEvidence}
+                onChange={setSelectedEvidence}
+                options={EVIDENCE_TYPES}
+              />
               <FilterSelect label="Tema" value={selectedTheme} onChange={setSelectedTheme} options={THEMES} allLabel="Todos" />
             </div>
           </div>
           <DrawerFooter className="mt-4">
             <div className="flex items-center justify-between">
-              <Button variant="outline" size="sm" onClick={clearFilters}>Limpar filtros</Button>
+              <Button variant="outline" size="sm" onClick={clearFilters} className="rounded-full">
+                Limpar
+              </Button>
               <DrawerClose asChild>
-                <Button size="sm">Aplicar</Button>
+                <Button size="sm" className="rounded-full">
+                  Aplicar
+                </Button>
               </DrawerClose>
             </div>
           </DrawerFooter>
@@ -378,89 +537,162 @@ const Index = () => {
 
   const DesktopFilters = () => (
     <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-end gap-2">
         <TranslationToggle
           translationMode={translationMode}
           hasAnyTranslation={hasAnyTranslation}
           onModeChange={setTranslationMode}
         />
-        <Button variant="outline" size="default" className="gap-1" onClick={() => setFiltersOpen(!filtersOpen)}>
+        <Button
+          variant="outline"
+          size="default"
+          className="gap-1 rounded-full border-secondary/20 bg-card/70"
+          onClick={() => setFiltersOpen(!filtersOpen)}
+        >
           <Filter className="h-4 w-4" />
           Filtros
           {filtersOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </Button>
       </div>
-      <CollapsibleContent className="mt-4 grid grid-cols-3 gap-4">
-        <div className="col-span-3">
-          <SearchBar value={searchQuery} onChange={setSearchQuery} />
-        </div>
-        <FilterSelect label="Fonte" value={selectedSource} onChange={setSelectedSource} options={sources} size="md" />
-        <FilterSelect label="Categoria" value={selectedCategory} onChange={setSelectedCategory} options={categories} size="md" />
-        <FilterSelect label="Região/Civilizações" value={selectedRegion} onChange={setSelectedRegion} options={REGIONS_CIVILIZATIONS} size="md" />
-        <FilterSelect label="Tipo de Evidência" value={selectedEvidence} onChange={setSelectedEvidence} options={EVIDENCE_TYPES} size="md" />
-        <FilterSelect label="Tema" value={selectedTheme} onChange={setSelectedTheme} options={THEMES} allLabel="Todos" size="md" />
-        <div className="col-span-3 flex items-center justify-start gap-2">
-          <Button variant="outline" size="default" onClick={clearFilters}>Limpar filtros</Button>
-          <Button size="default" onClick={() => setFiltersOpen(false)}>Aplicar</Button>
+      <CollapsibleContent className="mt-4 rounded-2xl bg-muted/55 p-4">
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-3">
+            <SearchBar value={searchQuery} onChange={setSearchQuery} />
+          </div>
+          <FilterSelect label="Fonte" value={selectedSource} onChange={setSelectedSource} options={sources} size="md" />
+          <FilterSelect
+            label="Categoria"
+            value={selectedCategory}
+            onChange={setSelectedCategory}
+            options={categories}
+            size="md"
+          />
+          <FilterSelect
+            label="Regiao/Civilizacoes"
+            value={selectedRegion}
+            onChange={setSelectedRegion}
+            options={REGIONS_CIVILIZATIONS}
+            size="md"
+          />
+          <FilterSelect
+            label="Tipo de Evidencia"
+            value={selectedEvidence}
+            onChange={setSelectedEvidence}
+            options={EVIDENCE_TYPES}
+            size="md"
+          />
+          <FilterSelect
+            label="Tema"
+            value={selectedTheme}
+            onChange={setSelectedTheme}
+            options={THEMES}
+            allLabel="Todos"
+            size="md"
+          />
+          <div className="col-span-3 flex items-center justify-start gap-2 pt-1">
+            <Button variant="outline" size="default" onClick={clearFilters} className="rounded-full">
+              Limpar filtros
+            </Button>
+            <Button size="default" onClick={() => setFiltersOpen(false)} className="rounded-full">
+              Aplicar
+            </Button>
+          </div>
         </div>
       </CollapsibleContent>
     </Collapsible>
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
+      <header className="relative overflow-hidden px-4 pb-14 pt-8 md:px-6 md:pb-20 md:pt-12">
+        <div className="absolute inset-0 -z-20 bg-[var(--gradient-hero)]" />
+        <div className="absolute inset-0 -z-10 bg-[var(--gradient-hero-glow)]" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_100%,rgba(255,255,255,0.16),transparent_35%)]" />
 
-      {/* Dynamic Hero Section */}
-      <header className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-accent text-primary-foreground py-16 md:py-20 px-4">
-        <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
-        <div className="container mx-auto max-w-7xl relative">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <img src="/android-chrome-512x512.png" alt="ReconNews Logo" className="h-14 w-14 md:h-16 md:w-16 rounded-xl shadow-lg" />
-              <div>
-                <h1 className="text-3xl md:text-5xl font-bold tracking-tight">
-                  {activeCatMeta ? activeCatMeta.label : "ReconNews Brasil"}
-                </h1>
-                <p className="text-primary-foreground/80 text-sm md:text-lg font-medium mt-1">
-                  {activeCatMeta
-                    ? `${activeCatMeta.emoji} Filtrando notícias por categoria`
-                    : "Cristianismo, arqueologia, liberdade religiosa, saúde e natureza"}
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
+          <div className="space-y-6 text-white">
+            <span className="inline-flex items-center rounded-full border border-amber-200/35 bg-amber-300/20 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-amber-100">
+              Curadoria e Coleta Inteligente
+            </span>
+
+            <div className="space-y-3">
+              <h1 className="text-4xl font-extrabold leading-tight text-white md:text-6xl">
+                {activeCatMeta ? activeCatMeta.label : "ReconNews Brasil"}
+              </h1>
+              <p className="max-w-2xl text-base leading-relaxed text-slate-200 md:text-lg">
+                {activeCatMeta
+                  ? `${activeCatMeta.emoji} Filtro ativo por categoria com coleta em tempo real.`
+                  : "Noticias sobre cristianismo, liberdade religiosa, saude e natureza em um painel editorial moderno."}
+              </p>
+            </div>
+
+            <div className="max-w-xl">
+              <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Buscar noticias, temas e fontes..." />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-xl">
+                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-200">Resultados</p>
+                <p className="mt-1 font-headline text-2xl font-extrabold text-white">{filteredArticles.length}</p>
+              </div>
+              <div className="rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-xl">
+                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-200">Fontes</p>
+                <p className="mt-1 font-headline text-2xl font-extrabold text-white">{sources.length}</p>
+              </div>
+              <div className="rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-xl">
+                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-200">Janela</p>
+                <p className="mt-1 font-headline text-2xl font-extrabold text-white">
+                  {isShowingHistorical ? "Hist." : `${timeWindowDays}d`}
                 </p>
               </div>
             </div>
-
-
           </div>
 
-          {/* Search in hero */}
-          <div className="mt-6 max-w-xl">
-            <SearchBar
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Buscar notícias..."
-            />
+          <div className="animate-float-slow rounded-[1.75rem] border border-white/15 bg-white/12 p-6 text-white backdrop-blur-2xl">
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-200">Painel em foco</p>
+            <h2 className="mt-2 text-2xl font-extrabold">
+              {activeCatMeta ? `${activeCatMeta.emoji} ${activeCatMeta.label}` : "Feed global ReconNews"}
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-200">
+              Camada visual inspirada no Stitch com profundidade tonal, foco em leitura e filtros rapidos.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-xl bg-white/10 p-3">
+                <p className="text-slate-300">Categorias</p>
+                <p className="font-headline text-xl font-bold">{CONTENT_CATEGORIES.length}</p>
+              </div>
+              <div className="rounded-xl bg-white/10 p-3">
+                <p className="text-slate-300">Atualizacao</p>
+                <p className="font-headline text-xl font-bold">Automatica</p>
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto max-w-7xl px-4">
-        <div className="mt-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">
-              {activeCatMeta ? activeCatMeta.label : "Explorar Notícias"}
-            </h2>
+      <main className="mx-auto max-w-7xl px-4 pb-16">
+        <section className="rounded-[1.5rem] border border-border/40 bg-card/80 p-4 shadow-[var(--shadow-card)] backdrop-blur-sm md:p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">
+                {activeCatMeta ? activeCatMeta.label : "Explorar Noticias"}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {isShowingHistorical
+                  ? `${filteredArticles.length} resultados no historico completo`
+                  : `${filteredArticles.length} resultados nos ultimos ${timeWindowDays} ${timeWindowDays === 1 ? "dia" : "dias"}`}
+              </p>
+            </div>
             {isMobile ? <MobileFilters /> : <DesktopFilters />}
           </div>
 
-          {/* Active category badge */}
           {activeCatMeta && (
-            <div className="flex items-center gap-2 mt-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-sm font-medium text-primary">
+            <div className="mt-4 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-secondary/20 bg-amber-50 px-3 py-1 text-sm font-medium text-secondary">
                 {activeCatMeta.emoji} {activeCatMeta.label}
                 <button
                   onClick={() => setSearchParams({})}
-                  className="ml-1 rounded-full p-0.5 hover:bg-primary/20 transition-colors"
+                  className="ml-1 rounded-full p-0.5 transition-colors hover:bg-secondary/10"
                   title="Remover filtro"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -468,23 +700,16 @@ const Index = () => {
               </span>
             </div>
           )}
+        </section>
 
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-sm text-muted-foreground">
-              {filteredArticles.length} resultados (últimos {timeWindowDays} {timeWindowDays === 1 ? "dia" : "dias"})
-            </p>
-          </div>
-
-          <Separator className="my-4" />
-
-          {/* Articles */}
+        <section className="mt-8">
           {loading ? (
             <div className="space-y-6">
-              <Skeleton className="h-64 w-full rounded-lg" />
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Skeleton className="h-72 w-full rounded-[1.5rem]" />
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {[...Array(9)].map((_, i) => (
                   <div key={i} className="space-y-3">
-                    <Skeleton className="aspect-video w-full rounded-lg" />
+                    <Skeleton className="aspect-video w-full rounded-xl" />
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-2/3" />
@@ -493,24 +718,21 @@ const Index = () => {
               </div>
             </div>
           ) : filteredArticles.length === 0 ? (
-            <div className="text-center py-20 px-4">
-              <div className="inline-flex p-4 rounded-full bg-muted mb-4">
+            <div className="rounded-[1.5rem] border border-border/40 bg-card/80 px-4 py-20 text-center shadow-[var(--shadow-card)]">
+              <div className="mb-4 inline-flex rounded-full bg-muted p-4">
                 <Newspaper className="h-12 w-12 text-muted-foreground" />
               </div>
-              <h3 className="text-2xl font-bold mb-2">
-                Nenhuma notícia encontrada
-              </h3>
-              <p className="text-muted-foreground max-w-md mx-auto">
+              <h3 className="mb-2 text-2xl font-bold">Nenhuma noticia encontrada</h3>
+              <p className="mx-auto max-w-md text-muted-foreground">
                 {configError
-                  ? "O site está online, mas sem conexão com o banco de notícias. Ajuste as variáveis de ambiente no deploy."
+                  ? "O site esta online, mas sem conexao com o banco de noticias. Ajuste as variaveis de ambiente no deploy."
                   : searchQuery || selectedCategory || selectedSource || selectedRegion || selectedEvidence || selectedTheme
-                    ? "Tente ajustar seus filtros ou busca"
-                    : "As notícias são coletadas automaticamente a partir de fontes públicas"}
+                    ? "Tente ajustar seus filtros ou busca."
+                    : "As noticias sao coletadas automaticamente. Se continuar vazio, execute o workflow News Scraper no GitHub Actions."}
               </p>
             </div>
           ) : (
             <>
-              {/* Featured Article */}
               {featuredArticle && (
                 <div className="mb-8">
                   <FeaturedCard
@@ -529,10 +751,9 @@ const Index = () => {
                 </div>
               )}
 
-              {/* Article Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedArticles.map((article) => (
-                  <div key={article.id} className="relative group/actions">
+                  <div key={article.id} className="group/actions relative">
                     <ArticleCard
                       title={article.title}
                       description={article.description || undefined}
@@ -547,13 +768,16 @@ const Index = () => {
                       imageUrl={article.image_url || undefined}
                       category={article.category || undefined}
                     />
-                    {/* Share & Bookmark overlay */}
-                    <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover/actions:opacity-100 transition-opacity duration-200 z-10">
+
+                    <div className="absolute right-3 top-3 z-10 flex gap-1 opacity-0 transition-opacity duration-200 group-hover/actions:opacity-100">
                       <Button
                         variant="secondary"
                         size="icon"
-                        className="h-8 w-8 rounded-full shadow-md bg-background/80 backdrop-blur-sm hover:bg-background"
-                        onClick={(e) => { e.stopPropagation(); shareArticle(article.title, article.url); }}
+                        className="h-8 w-8 rounded-full border border-white/30 bg-white/80 shadow-md backdrop-blur"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          shareArticle(article.title, article.url);
+                        }}
                         title="Compartilhar"
                       >
                         <Share2 className="h-3.5 w-3.5" />
@@ -561,12 +785,15 @@ const Index = () => {
                       <Button
                         variant="secondary"
                         size="icon"
-                        className="h-8 w-8 rounded-full shadow-md bg-background/80 backdrop-blur-sm hover:bg-background"
-                        onClick={(e) => { e.stopPropagation(); toggleBookmark(article.id); }}
+                        className="h-8 w-8 rounded-full border border-white/30 bg-white/80 shadow-md backdrop-blur"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleBookmark(article.id);
+                        }}
                         title={bookmarks.has(article.id) ? "Remover favorito" : "Salvar"}
                       >
                         {bookmarks.has(article.id) ? (
-                          <BookmarkCheck className="h-3.5 w-3.5 text-primary" />
+                          <BookmarkCheck className="h-3.5 w-3.5 text-secondary" />
                         ) : (
                           <Bookmark className="h-3.5 w-3.5" />
                         )}
@@ -575,48 +802,42 @@ const Index = () => {
                   </div>
                 ))}
               </div>
-              <div className="mt-6">
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                />
-              </div>
+
+              <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
             </>
           )}
-        </div>
+        </section>
       </main>
 
-      {/* Redesigned Footer */}
-      <footer className="bg-gradient-to-b from-background to-muted/30 border-t border-border mt-20 py-12">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="grid md:grid-cols-3 gap-8 mb-8">
-            {/* Brand */}
+      <footer className="mt-20 border-t border-border/60 bg-gradient-to-b from-background to-muted/35 py-12">
+        <div className="mx-auto max-w-7xl px-4">
+          <div className="mb-8 grid gap-8 md:grid-cols-3">
             <div>
-              <div className="flex items-center gap-3 mb-3">
+              <div className="mb-3 flex items-center gap-3">
                 <img src="/favicon-32x32.png" alt="ReconNews Logo" className="h-8 w-8 rounded-md" />
-                <h4 className="font-bold text-lg">ReconNews</h4>
+                <h4 className="text-lg font-bold">ReconNews</h4>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Agregador automático de notícias sobre fé cristã, liberdade religiosa, saúde, bem‑estar e natureza.
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Agregador automatico de noticias sobre fe crista, liberdade religiosa, saude, bem-estar e natureza.
               </p>
             </div>
 
-            {/* Navegação */}
             <div>
-              <h4 className="font-semibold text-sm mb-3">NAVEGAÇÃO</h4>
-              <ul className="text-sm text-muted-foreground space-y-2">
+              <h4 className="mb-3 text-sm font-semibold">NAVEGACAO</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <Link to="/" className="hover:text-primary transition-colors">📰 Todas as Notícias</Link>
+                  <Link to="/" className="transition-colors hover:text-secondary">
+                    Todas as Noticias
+                  </Link>
                 </li>
-                {CONTENT_CATEGORIES.map(cat => (
+                {CONTENT_CATEGORIES.map((cat) => (
                   <li key={cat.id}>
                     {cat.id === "exercicios" ? (
-                      <Link to="/exercicios" className="hover:text-primary transition-colors">
+                      <Link to="/exercicios" className="transition-colors hover:text-secondary">
                         {cat.emoji} {cat.label}
                       </Link>
                     ) : (
-                      <Link to={`/?categoria=${cat.id}`} className="hover:text-primary transition-colors">
+                      <Link to={`/?categoria=${cat.id}`} className="transition-colors hover:text-secondary">
                         {cat.emoji} {cat.label}
                       </Link>
                     )}
@@ -625,18 +846,17 @@ const Index = () => {
               </ul>
             </div>
 
-            {/* Cobertura — links funcionais */}
             <div>
-              <h4 className="font-semibold text-sm mb-3">COBERTURA</h4>
-              <ul className="text-sm text-muted-foreground space-y-2">
-                {CONTENT_CATEGORIES.map(cat => (
+              <h4 className="mb-3 text-sm font-semibold">COBERTURA</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                {CONTENT_CATEGORIES.map((cat) => (
                   <li key={cat.id}>
                     {cat.id === "exercicios" ? (
-                      <Link to="/exercicios" className="hover:text-primary transition-colors">
+                      <Link to="/exercicios" className="transition-colors hover:text-secondary">
                         ✓ {cat.label}
                       </Link>
                     ) : (
-                      <Link to={`/?categoria=${cat.id}`} className="hover:text-primary transition-colors">
+                      <Link to={`/?categoria=${cat.id}`} className="transition-colors hover:text-secondary">
                         ✓ {cat.label}
                       </Link>
                     )}
@@ -648,12 +868,12 @@ const Index = () => {
 
           <Separator className="mb-6" />
 
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()} ReconNews • Todas as notícias são coletadas de fontes públicas</p>
+          <div className="flex flex-col items-center justify-between gap-4 text-sm text-muted-foreground md:flex-row">
+            <p>© {new Date().getFullYear()} ReconNews • Todas as noticias sao coletadas de fontes publicas</p>
             {latestScrapedAt && (
               <p className="flex items-center gap-1.5 text-xs">
                 <Clock className="h-3.5 w-3.5" />
-                Última coleta: {new Date(latestScrapedAt).toLocaleString("pt-BR")}
+                Ultima coleta: {new Date(latestScrapedAt).toLocaleString("pt-BR")}
               </p>
             )}
           </div>

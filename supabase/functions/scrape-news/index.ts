@@ -5,10 +5,49 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface RobotsCheckOptions {
+  isFeed?: boolean;
+}
+
+function looksLikeFeedUrl(urlObj: URL): boolean {
+  const path = urlObj.pathname.toLowerCase();
+  const query = (urlObj.search || '').toLowerCase();
+  return (
+    path.includes('/rss') ||
+    path.includes('/feed') ||
+    path.endsWith('.xml') ||
+    query.includes('output=rss') ||
+    query.includes('format=rss')
+  );
+}
+
+function getRobotsMatchLength(rulePath: string, targetPath: string): number {
+  const raw = (rulePath || '').trim();
+  if (!raw) return -1;
+
+  const isExactRule = raw.endsWith('$');
+  const withoutDollar = isExactRule ? raw.slice(0, -1) : raw;
+  const normalized = withoutDollar.replace(/\*/g, '');
+  if (!normalized) return -1;
+
+  if (isExactRule) {
+    return targetPath === normalized ? normalized.length : -1;
+  }
+
+  return targetPath.startsWith(normalized) ? normalized.length : -1;
+}
+
 // Verificar robots.txt antes de fazer scraping
-async function checkRobotsTxt(url: string): Promise<boolean> {
+async function checkRobotsTxt(url: string, options: RobotsCheckOptions = {}): Promise<boolean> {
   try {
     const urlObj = new URL(url);
+
+    // Feeds RSS sao endpoints de syndication; nao bloquear por regra simplificada.
+    if (options.isFeed || looksLikeFeedUrl(urlObj)) {
+      console.log(`INFO Ignorando robots para feed publico: ${urlObj.host}`);
+      return true;
+    }
+
     const robotsUrl = `${urlObj.protocol}//${urlObj.host}/robots.txt`;
 
     const response = await fetch(robotsUrl, {
@@ -17,42 +56,79 @@ async function checkRobotsTxt(url: string): Promise<boolean> {
     });
 
     if (!response.ok) {
-      console.log(`⚠️ Robots.txt não encontrado para ${urlObj.host}, prosseguindo com scraping`);
-      return true; // Se não há robots.txt, assumimos que é permitido
+      console.log(`WARN Robots.txt nao encontrado para ${urlObj.host}, prosseguindo com scraping`);
+      return true; // Se nao ha robots.txt, assumimos que e permitido
     }
 
     const robotsText = await response.text();
-    const lines = robotsText.split('\n').map(line => line.trim().toLowerCase());
+    const rawLines = robotsText.split('\n').map(line => line.trim());
 
-    let userAgentMatch = false;
-    let disallowed = false;
+    type Rule = { type: 'allow' | 'disallow'; path: string };
+    type Group = { agents: string[]; rules: Rule[] };
+    const groups: Group[] = [];
+    let currentGroup: Group | null = null;
 
-    for (const line of lines) {
-      if (line.startsWith('user-agent:')) {
-        const agent = line.split(':')[1].trim();
-        userAgentMatch = agent === '*' || agent.includes('reconnews') || agent.includes('bot');
-      } else if (userAgentMatch && line.startsWith('disallow:')) {
-        const path = line.split(':')[1].trim();
-        if (path === '/' || path === '*') {
-          disallowed = true;
-          break;
+    for (const rawLine of rawLines) {
+      const line = rawLine.split('#')[0].trim();
+      if (!line) continue;
+
+      const sep = line.indexOf(':');
+      if (sep === -1) continue;
+
+      const field = line.slice(0, sep).trim().toLowerCase();
+      const value = line.slice(sep + 1).trim().toLowerCase();
+      if (!value) continue;
+
+      if (field === 'user-agent') {
+        if (!currentGroup || currentGroup.rules.length > 0) {
+          currentGroup = { agents: [], rules: [] };
+          groups.push(currentGroup);
         }
+        currentGroup.agents.push(value);
+        continue;
+      }
+
+      if ((field === 'allow' || field === 'disallow') && currentGroup) {
+        currentGroup.rules.push({ type: field, path: value });
       }
     }
 
-    if (disallowed) {
-      console.log(`🚫 Scraping não permitido pelo robots.txt de ${urlObj.host}`);
+    const uaName = 'reconnews-bot';
+    const matchingGroups = groups.filter(group =>
+      group.agents.some(agent => agent === '*' || agent.includes(uaName) || uaName.includes(agent))
+    );
+
+    if (matchingGroups.length === 0) {
+      console.log(`OK Sem regra aplicavel de robots para ${urlObj.host}`);
+      return true;
+    }
+
+    const targetPath = `${urlObj.pathname}${urlObj.search}` || '/';
+    let bestAllow = -1;
+    let bestDisallow = -1;
+
+    for (const group of matchingGroups) {
+      for (const rule of group.rules) {
+        const matchLength = getRobotsMatchLength(rule.path, targetPath);
+        if (matchLength < 0) continue;
+        if (rule.type === 'allow') bestAllow = Math.max(bestAllow, matchLength);
+        if (rule.type === 'disallow') bestDisallow = Math.max(bestDisallow, matchLength);
+      }
+    }
+
+    const allowed = bestDisallow < 0 || bestAllow >= bestDisallow;
+    if (!allowed) {
+      console.log(`BLOCK Robots nao permite scraping para ${urlObj.host} (${targetPath})`);
       return false;
     }
 
-    console.log(`✅ Scraping permitido pelo robots.txt de ${urlObj.host}`);
+    console.log(`OK Robots permite scraping para ${urlObj.host} (${targetPath})`);
     return true;
   } catch (error) {
-    console.log(`⚠️ Erro ao verificar robots.txt para ${url}:`, error.message);
-    return true; // Em caso de erro, assumimos que é permitido
+    console.log(`WARN Erro ao verificar robots.txt para ${url}:`, (error as Error).message || error);
+    return true; // Em caso de erro, assumimos que e permitido
   }
 }
-
 // Fetch com retry e backoff para robustez
 async function fetchWithRetry(url: string, init: RequestInit = {}, attempts = 3, baseTimeoutMs = 10000, backoffMs = 1500): Promise<Response> {
   let lastError: unknown = null;
@@ -317,7 +393,7 @@ async function parseRSSFeed(url: string, source: string, category: string): Prom
     console.log(`  📡 Verificando robots.txt para: ${source}`);
 
     // Verificar robots.txt antes de fazer scraping
-    const robotsAllowed = await checkRobotsTxt(url);
+    const robotsAllowed = await checkRobotsTxt(url, { isFeed: true });
     if (!robotsAllowed) {
       console.log(`  🚫 Scraping não permitido pelo robots.txt: ${source}`);
       return [];

@@ -96,7 +96,8 @@ const SummaryDialog = ({
 }) => (
   <Dialog>
     {trigger}
-    <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+    <DialogContent className="max-h-[85vh] overflow-y-auto rounded-3xl border-border/40 bg-card/95 p-0 sm:max-w-xl">
+      <div className="space-y-4 p-6">
       <DialogHeader>
         <DialogTitle>{displayTitle}</DialogTitle>
         {source && (
@@ -133,6 +134,7 @@ const SummaryDialog = ({
           <Button size="sm">Abrir original</Button>
         </a>
       </DialogFooter>
+      </div>
     </DialogContent>
   </Dialog>
 );
@@ -243,9 +245,9 @@ export const ArticleCard = ({
   };
 
   return (
-    <Card className="group overflow-hidden transition-all duration-300 hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)] border-border hover:border-primary/30 bg-gradient-to-b from-card to-card/95">
+    <Card className="group sanctuary-card overflow-hidden rounded-[1.5rem] border border-border/30 transition-all duration-500 hover:-translate-y-1 hover:shadow-[var(--shadow-card-hover)]">
       <div className="block h-full">
-        <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-muted via-muted to-muted/70">
+        <div className="relative aspect-video overflow-hidden rounded-t-[1.5rem] bg-gradient-to-br from-muted via-muted/80 to-muted/60">
           {imageUrl ? (
             <>
               <img
@@ -263,32 +265,32 @@ export const ArticleCard = ({
                   }
                 }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-t from-primary/75 via-primary/10 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
             </>
           ) : (
             <img src="/placeholder.svg" alt="Imagem indisponível" className="h-full w-full object-cover" />
           )}
           {category && !HIDDEN_CATEGORIES.has(category) && (
             <div className="absolute top-3 left-3">
-              <Badge className={`${getCategoryColor(category)} text-white border-0 shadow-lg`}>
+              <Badge className={`${getCategoryColor(category)} border-0 text-white shadow-lg`}>
                 {category}
               </Badge>
             </div>
           )}
         </div>
-        <div className="p-5 space-y-3">
+        <div className="space-y-3 p-5">
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className="text-xs font-medium border-primary/30 text-primary">
+            <Badge variant="outline" className="rounded-full border-secondary/20 bg-amber-50 text-xs font-semibold text-secondary">
               {source}
             </Badge>
             {(titlePt || descriptionPt || fullDescriptionPt) && (
-              <Badge className="bg-green-600 text-white text-[10px] border-0" title={translationProvider ? `Traduzido automaticamente via ${translationProvider}` : "Traduzido automaticamente"}>
+              <Badge className="rounded-full border-0 bg-primary text-[10px] text-primary-foreground" title={translationProvider ? `Traduzido automaticamente via ${translationProvider}` : "Traduzido automaticamente"}>
                 Traduzido
               </Badge>
             )}
           </div>
           
-          <h3 className="font-bold text-lg leading-tight text-foreground group-hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
+          <h3 className="line-clamp-2 min-h-[3.5rem] font-headline text-lg font-bold leading-tight text-foreground transition-colors group-hover:text-secondary">
             {displayTitle}
           </h3>
           
@@ -297,7 +299,7 @@ export const ArticleCard = ({
               displayDescription ? (
                 <DialogTrigger asChild>
                   <p
-                    className="text-sm text-muted-foreground leading-relaxed line-clamp-3 cursor-pointer"
+                    className="line-clamp-3 cursor-pointer text-sm leading-relaxed text-muted-foreground"
                     title="Abrir resumo"
                   >
                     {displayDescription}
@@ -312,9 +314,9 @@ export const ArticleCard = ({
             {...dialogProps}
           />
           
-          <div className="flex items-center justify-between pt-3 border-t border-border">
+          <div className="mt-2 flex items-center justify-between rounded-xl bg-muted/45 px-2 py-2">
             {formattedDate && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Calendar className="h-3.5 w-3.5" />
                 <span>{formattedDate}</span>
               </div>
@@ -324,7 +326,7 @@ export const ArticleCard = ({
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs font-medium text-primary inline-flex items-center gap-1.5 hover:gap-2 transition-all"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-secondary transition-all hover:gap-2"
               >
                 <span>Ler mais</span>
                 <ExternalLink className="h-3.5 w-3.5" />
@@ -332,7 +334,7 @@ export const ArticleCard = ({
               <SummaryDialog
                 trigger={
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="text-xs">
+                    <Button variant="outline" size="sm" className="rounded-full border-secondary/25 bg-card text-xs hover:bg-amber-50">
                       Resumo
                     </Button>
                   </DialogTrigger>
