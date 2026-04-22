@@ -2,3 +2,9 @@ project_id = "kkhqybinqwrndcoeotnu"
 
 [functions.scrape-news]
 verify_jwt = true
+
+[functions.retranslate-articles]
+verify_jwt = true
+
+[functions.cleanup-non-br]
+verify_jwt = true

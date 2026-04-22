@@ -19,6 +19,9 @@ Aplicação roda em http://localhost:8080
 - Configure SUPABASE_URL e SUPABASE_ANON_KEY no frontend (se necessário)
 - Função Edge `scrape-news` com `verify_jwt = true` (chamada via Actions ou backend)
 - Para testes manuais: use token Service Role apenas em ambientes seguros
+- Defina `VITE_ADMIN_EMAILS` (lista separada por vírgula) para liberar acesso ao painel `/admin`
+- Defina `VITE_ALLOW_ADMIN_SIGNUP=false` em produção para bloquear criação pública de contas
+- Defina `RECON_ADMIN_EMAILS` nos secrets da Edge Function para permitir execução manual do scraper por admins
 
 ## Automação (GitHub Actions)
 O workflow `.github/workflows/scraper.yml` dispara a função `scrape-news` em horários pré-definidos e permite execução manual.
@@ -31,6 +34,7 @@ Você pode usar Vercel, Netlify, ou qualquer host estático para o frontend.
 ## Segurança
 - Nunca exponha `SUPABASE_SERVICE_ROLE_KEY` no frontend
 - Use RLS e verificação de JWT nas APIs
+- Faça rotação imediata de chaves antigas se já existiram tokens hardcoded em migrations históricas
 
 ## Licença
 MIT

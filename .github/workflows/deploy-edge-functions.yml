@@ -42,6 +42,7 @@ jobs:
             # Provedor de tradução (ex.: deepl) e chave de API
             RECON_TRANSLATION_PROVIDER="$PROVIDER" \
             RECON_DEEPL_API_KEY="${{ secrets.RECON_DEEPL_API_KEY }}" \
+            RECON_ADMIN_EMAILS="${{ secrets.RECON_ADMIN_EMAILS }}" \
             # Política editorial opcional
             RECON_ALLOWED_SOURCES="${{ secrets.RECON_ALLOWED_SOURCES }}" \
             RECON_BLOCKED_HOSTS="${{ secrets.RECON_BLOCKED_HOSTS }}" \

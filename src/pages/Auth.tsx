@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, LogIn } from "lucide-react";
+import { allowAdminSignup, isAdminUser } from "@/lib/auth";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -18,14 +19,18 @@ const Auth = () => {
   useEffect(() => {
     // Verificar se já está logado
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+      if (session && isAdminUser(session.user)) {
         navigate("/admin");
+      } else if (session) {
+        navigate("/");
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
+      if (session && isAdminUser(session.user)) {
         navigate("/admin");
+      } else if (session) {
+        navigate("/");
       }
     });
 
@@ -62,6 +67,14 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!allowAdminSignup) {
+      toast({
+        title: "Cadastro desativado",
+        description: "Somente administradores autorizados podem acessar.",
+        variant: "destructive",
+      });
+      return;
+    }
     setLoading(true);
 
     try {
@@ -148,15 +161,17 @@ const Auth = () => {
                   </>
                 )}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={loading}
-                onClick={handleSignUp}
-                className="w-full"
-              >
-                Criar Conta
-              </Button>
+              {allowAdminSignup && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loading}
+                  onClick={handleSignUp}
+                  className="w-full"
+                >
+                  Criar Conta
+                </Button>
+              )}
             </div>
           </form>
         </CardContent>

@@ -6,24 +6,73 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Newspaper, LogOut, ArrowLeft } from "lucide-react";
 import { CollectingBar } from "@/components/CollectingBar";
+import { isAdminSession } from "@/lib/auth";
 
 const Admin = () => {
   const [isCollecting, setIsCollecting] = useState(false);
   const [collectProgress, setCollectProgress] = useState(0);
   const [isCleaning, setIsCleaning] = useState(false);
   const [isDbCleanupRunning, setIsDbCleanupRunning] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     const sessionCheck = async () => {
+      if (!supabase) {
+        toast({
+          title: "Configuração ausente",
+          description: "Supabase não está configurado no ambiente.",
+          variant: "destructive",
+        });
+        navigate("/");
+        setCheckingAccess(false);
+        return;
+      }
+
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        navigate("/");
+        navigate("/auth");
+        setCheckingAccess(false);
+        return;
       }
+
+      if (!isAdminSession(data.session)) {
+        await supabase.auth.signOut();
+        toast({
+          title: "Acesso negado",
+          description: "Sua conta não possui permissão de administrador.",
+          variant: "destructive",
+        });
+        navigate("/");
+        setCheckingAccess(false);
+        return;
+      }
+
+      setCheckingAccess(false);
     };
+
     sessionCheck();
-  }, [navigate]);
+
+    if (!supabase) return;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        navigate("/auth");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate, toast]);
+
+  if (checkingAccess) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Validando acesso administrativo...</p>
+      </div>
+    );
+  }
 
   const handleCollect = async () => {
     if (isCollecting) return;
