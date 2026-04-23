@@ -6,24 +6,73 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Newspaper, LogOut, ArrowLeft } from "lucide-react";
 import { CollectingBar } from "@/components/CollectingBar";
+import { isAdminSession } from "@/lib/auth";
 
 const Admin = () => {
   const [isCollecting, setIsCollecting] = useState(false);
   const [collectProgress, setCollectProgress] = useState(0);
   const [isCleaning, setIsCleaning] = useState(false);
   const [isDbCleanupRunning, setIsDbCleanupRunning] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     const sessionCheck = async () => {
+      if (!supabase) {
+        toast({
+          title: "Configuração ausente",
+          description: "Supabase não está configurado no ambiente.",
+          variant: "destructive",
+        });
+        navigate("/");
+        setCheckingAccess(false);
+        return;
+      }
+
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        navigate("/");
+        navigate("/auth");
+        setCheckingAccess(false);
+        return;
       }
+
+      if (!isAdminSession(data.session)) {
+        await supabase.auth.signOut();
+        toast({
+          title: "Acesso negado",
+          description: "Sua conta não possui permissão de administrador.",
+          variant: "destructive",
+        });
+        navigate("/");
+        setCheckingAccess(false);
+        return;
+      }
+
+      setCheckingAccess(false);
     };
+
     sessionCheck();
-  }, [navigate]);
+
+    if (!supabase) return;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        navigate("/auth");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate, toast]);
+
+  if (checkingAccess) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Validando acesso administrativo...</p>
+      </div>
+    );
+  }
 
   const handleCollect = async () => {
     if (isCollecting) return;
@@ -82,31 +131,35 @@ const Admin = () => {
     if (isCleaning) return;
     setIsCleaning(true);
     try {
-      const hiddenCategories = ['Portal Evangélico', 'Notícias Evangélicas'];
-      const { error } = await supabase
-        .from('articles')
-        .delete()
-        .in('category', hiddenCategories);
+      const { data, error } = await supabase.functions.invoke<{
+        success: boolean;
+        deleted?: number;
+        error?: string;
+      }>("cleanup-non-br", {
+        body: { mode: "remove_hidden_categories" },
+      });
 
-      if (error) {
+      if (error || !data?.success) {
         toast({
-          title: 'Erro na limpeza',
-          description: 'Não foi possível remover artigos dessas categorias. Verifique permissões/RLS.',
-          variant: 'destructive',
+          title: "Erro na limpeza",
+          description:
+            data?.error ??
+            "Nao foi possivel remover artigos dessas categorias. Verifique as permissoes de admin.",
+          variant: "destructive",
         });
         setIsCleaning(false);
         return;
       }
 
       toast({
-        title: 'Limpeza concluída',
-        description: 'Artigos com “Portal Evangélico” e “Notícias Evangélicas” foram removidos.',
+        title: "Limpeza concluida",
+        description: `${data.deleted ?? 0} artigos removidos das categorias ocultas.`,
       });
     } catch (err) {
       toast({
-        title: 'Erro na limpeza',
-        description: 'Ocorreu um erro inesperado ao limpar as categorias.',
-        variant: 'destructive',
+        title: "Erro na limpeza",
+        description: "Ocorreu um erro inesperado ao limpar as categorias.",
+        variant: "destructive",
       });
     } finally {
       setIsCleaning(false);
@@ -117,24 +170,36 @@ const Admin = () => {
     if (isDbCleanupRunning) return;
     setIsDbCleanupRunning(true);
     try {
-      const { data, error } = await supabase.rpc('cleanup_old_articles');
-      if (error) {
+      const { data, error } = await supabase.functions.invoke<{
+        success: boolean;
+        deleted?: number;
+        message?: string;
+        error?: string;
+      }>("cleanup-non-br", {
+        body: { mode: "cleanup_old_articles" },
+      });
+
+      if (error || !data?.success) {
         toast({
-          title: 'Erro ao executar limpeza programática',
-          description: 'A função cleanup_old_articles falhou. Verifique permissões/RLS.',
-          variant: 'destructive',
+          title: "Erro ao executar limpeza programatica",
+          description:
+            data?.error ??
+            "A funcao cleanup_old_articles falhou. Verifique as permissoes de admin.",
+          variant: "destructive",
         });
       } else {
         toast({
-          title: 'Limpeza programática iniciada',
-          description: typeof data === 'string' ? data : 'Verifique logs para detalhes.',
+          title: "Limpeza programatica concluida",
+          description:
+            data.message ??
+            `${data.deleted ?? 0} artigos antigos removidos.`,
         });
       }
     } catch (err) {
       toast({
-        title: 'Erro ao executar limpeza programática',
-        description: 'Ocorreu um erro inesperado ao chamar a função RPC.',
-        variant: 'destructive',
+        title: "Erro ao executar limpeza programatica",
+        description: "Ocorreu um erro inesperado ao chamar a funcao de limpeza.",
+        variant: "destructive",
       });
     } finally {
       setIsDbCleanupRunning(false);
@@ -192,7 +257,7 @@ const Admin = () => {
             <CardContent className="space-y-2">
               <div className="flex justify-between py-2 border-b">
                 <span className="text-muted-foreground">Coleta automática:</span>
-                <span className="font-medium">5x ao dia (06:00, 10:00, 14:00, 18:00, 22:00 BRT)</span>
+                <span className="font-medium">2x ao dia (07:00 e 17:00 BRT)</span>
               </div>
               <div className="flex justify-between py-2 border-b">
                 <span className="text-muted-foreground">Fontes ativas:</span>

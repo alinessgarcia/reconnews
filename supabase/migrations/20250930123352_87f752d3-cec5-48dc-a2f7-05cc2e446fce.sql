@@ -19,7 +19,7 @@ SELECT cron.schedule(
   SELECT
     net.http_post(
       url := 'https://ohntadcyqsdqghftivou.supabase.co/functions/v1/scrape-news',
-      headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9obnRhZGN5cXNkcWdoZnRpdm91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNzgzMzQsImV4cCI6MjA3NDc1NDMzNH0.H7ZUI6E-U89B6BdSo67coLOZMsDLQ-u1QPbt3atOcVs"}'::jsonb,
+      headers := '{"Content-Type": "application/json", "Authorization": "Bearer __REDACTED_ROTATE_KEY__"}'::jsonb,
       body := '{"scheduled": true, "time": "morning"}'::jsonb
     ) as request_id;
   $$
@@ -33,7 +33,7 @@ SELECT cron.schedule(
   SELECT
     net.http_post(
       url := 'https://ohntadcyqsdqghftivou.supabase.co/functions/v1/scrape-news',
-      headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9obnRhZGN5cXNkcWdoZnRpdm91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNzgzMzQsImV4cCI6MjA3NDc1NDMzNH0.H7ZUI6E-U89B6BdSo67coLOZMsDLQ-u1QPbt3atOcVs"}'::jsonb,
+      headers := '{"Content-Type": "application/json", "Authorization": "Bearer __REDACTED_ROTATE_KEY__"}'::jsonb,
       body := '{"scheduled": true, "time": "evening"}'::jsonb
     ) as request_id;
   $$

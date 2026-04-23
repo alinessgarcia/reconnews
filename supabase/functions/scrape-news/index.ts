@@ -546,6 +546,87 @@ function isHostAllowed(host: string, allowed: string[]): boolean {
   return allowed.some((a) => h === a || h.endsWith(`.${a}`));
 }
 
+const ADMIN_EMAIL_ALLOWLIST = new Set(
+  (Deno.env.get('RECON_ADMIN_EMAILS') ?? '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+);
+const ALLOW_AUTHENTICATED_ADMIN_ACTIONS =
+  (Deno.env.get('RECON_ALLOW_AUTHENTICATED_ADMIN_ACTIONS') ?? 'true')
+    .trim()
+    .toLowerCase() === 'true';
+
+function getBearerToken(req: Request): string | null {
+  const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization');
+  if (!authHeader) return null;
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return null;
+  const token = authHeader.slice(7).trim();
+  return token.length > 0 ? token : null;
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+function hasAdminLikeRole(roleCandidates: unknown[]): boolean {
+  const normalized = roleCandidates
+    .map((value) => String(value ?? '').trim().toLowerCase())
+    .filter(Boolean);
+
+  return normalized.includes('admin') || normalized.includes('service_role');
+}
+
+async function isAuthorizedScrapeCaller(req: Request, supabase: ReturnType<typeof createClient>): Promise<boolean> {
+  const token = getBearerToken(req);
+  if (!token) return false;
+
+  const payload = decodeJwtPayload(token);
+  const claimRole = String(payload?.role ?? '').toLowerCase();
+  const claimAppMetadata = (payload?.app_metadata as Record<string, unknown> | undefined) ?? {};
+  const claimUserMetadata = (payload?.user_metadata as Record<string, unknown> | undefined) ?? {};
+  const hasPrivilegedClaim = hasAdminLikeRole([
+    claimRole,
+    claimAppMetadata.role,
+    claimUserMetadata.role,
+  ]);
+
+  if (hasPrivilegedClaim) {
+    return true;
+  }
+
+  if (claimRole !== 'authenticated') {
+    return false;
+  }
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data?.user) {
+    return false;
+  }
+
+  const user = data.user;
+  const email = (user.email ?? '').toLowerCase();
+
+  if (hasAdminLikeRole([user.app_metadata?.role, user.user_metadata?.role])) {
+    return true;
+  }
+
+  if (ADMIN_EMAIL_ALLOWLIST.size > 0) {
+    return email !== '' && ADMIN_EMAIL_ALLOWLIST.has(email);
+  }
+
+  // Fallback pragmatico para operacao manual em ambientes onde so existe o login admin.
+  return ALLOW_AUTHENTICATED_ADMIN_ACTIONS;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -556,6 +637,20 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY') ?? Deno.env.get('RECON_SERVICE_ROLE_KEY')!;
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const isAuthorized = await isAuthorizedScrapeCaller(req, supabase);
+    if (!isAuthorized) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Unauthorized caller',
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403,
+        }
+      );
+    }
+
     let batch: string | null = null;
     try {
       const body = await req.json();
