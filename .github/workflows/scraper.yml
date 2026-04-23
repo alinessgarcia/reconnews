@@ -2,20 +2,9 @@ name: News Scraper
 
 on:
   schedule:
-    # 5 execuções por dia (horários BRT convertidos para UTC)
-    - cron: '0 9 * * *'   # 06:00 BRT -> 09:00 UTC
-    - cron: '0 13 * * *'  # 10:00 BRT -> 13:00 UTC  
-    - cron: '0 17 * * *'  # 14:00 BRT -> 17:00 UTC
-    - cron: '0 21 * * *'  # 18:00 BRT -> 21:00 UTC
-    - cron: '0 1 * * *'   # 22:00 BRT -> 01:00 UTC (next day)
-  
-  # Permite execução manual
-  workflow_dispatch:
-  workflow_run:
-    workflows: ["Deploy Edge Functions"]
-    types: ["completed"]
-  push:
-    branches: [ main ]
+    # 2 execucoes por dia (horarios BRT convertidos para UTC)
+    - cron: '0 10 * * *'  # 07:00 BRT -> 10:00 UTC
+    - cron: '0 20 * * *'  # 17:00 BRT -> 20:00 UTC
 
 jobs:
   scrape:
